@@ -1,0 +1,1540 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>摘要筛选助手 · Abstract Screener</title>
+<style>
+:root {
+  --bg: #f6f2ea; --panel: #fffdf8; --card: #ffffff; --line: #e9e1d5; --line2: #d8ccbb;
+  --ink: #29231c; --ink2: #574e44; --muted: #8b8175;
+  --brand: #8a5a3b; --brand-soft: #f4e8dc;
+  --keep: #2c7a4b; --keep-soft: #e2f1e7; --excl: #c0392b; --excl-soft: #fbe6e2;
+  --unsure: #a86b12; --unsure-soft: #fcf0d7;
+  --ai: #4b44b0; --ai-soft: #ecebfa;
+  --mark: #ffe27a; --todo: #ddd3c5;
+  --shadow: 0 1px 2px rgba(60, 40, 20, .05), 0 8px 28px rgba(60, 40, 20, .08);
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --serif: Charter, "Iowan Old Style", "Palatino Linotype", Georgia, "Songti SC", "Noto Serif SC", serif;
+}
+* { box-sizing: border-box; }
+html, body, #app { margin: 0; height: 100%; }
+body { font: 15px/1.5 var(--sans); color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--brand); }
+kbd { font: 600 11px/1 var(--sans); padding: 3px 6px; border-radius: 5px; border: 1px solid currentColor; opacity: .7; margin-left: 6px; }
+.hidden { display: none !important; }
+
+/* ---------- 顶栏 ---------- */
+.shell { display: flex; flex-direction: column; height: 100%; }
+.top { display: flex; align-items: center; gap: 24px; padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--line); min-height: 58px; flex: none; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand svg { flex: none; }
+.brand b { font-size: 17px; letter-spacing: .02em; white-space: nowrap; }
+.brand small { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.prog { flex: 1; min-width: 180px; max-width: 560px; margin: 0 auto; }
+.prog .nums { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); margin-bottom: 6px; white-space: nowrap; }
+.prog .nums b { color: var(--ink); font-size: 15px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+.dot.k { background: var(--keep); } .dot.x { background: var(--excl); } .dot.t { background: var(--todo); } .dot.a { background: var(--ai); }
+.bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--todo); }
+.bar i { display: block; height: 100%; transition: width .3s; }
+.bar .k { background: var(--keep); } .bar .x { background: var(--excl); }
+.aibar { margin-top: 6px; height: 4px; border-radius: 99px; background: var(--ai-soft); overflow: hidden; }
+.aibar i { display: block; height: 100%; background: var(--ai); transition: width .3s; }
+.tools { display: flex; gap: 8px; }
+.tb { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line2); background: var(--card); border-radius: 10px; font-size: 13.5px; color: var(--ink2); white-space: nowrap; }
+.tb:hover { border-color: var(--brand); color: var(--brand); }
+.tb.ai { border-color: #cfcbf3; color: var(--ai); background: var(--ai-soft); }
+.tb.ai.on { background: var(--ai); color: #fff; border-color: var(--ai); }
+
+/* ---------- 三栏 ---------- */
+.main { display: grid; grid-template-columns: 270px minmax(0, 1fr) 330px; flex: 1; min-height: 0; }
+.list { border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 14px 8px; }
+.tab { border: 1px solid var(--line2); background: transparent; border-radius: 99px; padding: 3px 10px; font-size: 12.5px; color: var(--ink2); }
+.tab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.tab .n { opacity: .65; margin-left: 4px; }
+.search { margin: 4px 14px 10px; padding: 7px 11px; border: 1px solid var(--line2); border-radius: 9px; background: var(--card); }
+.items { overflow: auto; flex: 1; padding: 0 8px 12px; }
+.it { display: grid; grid-template-columns: 30px 1fr 8px; gap: 6px; align-items: center; padding: 7px 8px; border-radius: 9px; cursor: pointer; font-size: 13px; color: var(--ink2); }
+.it:hover { background: var(--brand-soft); }
+.it.cur { background: var(--card); box-shadow: inset 3px 0 0 var(--brand), 0 1px 3px rgba(0,0,0,.06); color: var(--ink); }
+.it .i { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; padding-top: 1px; }
+.it .tt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.it .dot { margin: 0; }
+.it .st { display: flex; gap: 3px; padding-top: 4px; }
+.empty-list { color: var(--muted); font-size: 13px; padding: 20px 14px; }
+
+.center { overflow: auto; position: relative; display: flex; flex-direction: column; }
+.paper { width: 100%; max-width: 820px; margin: 0 auto; padding: 30px 34px 0; flex: 1; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 99px; background: var(--brand-soft); color: var(--brand); font-size: 12px; font-weight: 600; }
+.chip.g { background: #efebe4; color: var(--ink2); font-weight: 500; }
+.chip.warn { background: var(--unsure-soft); color: var(--unsure); }
+.paper h1 { font: 650 24px/1.34 var(--sans); margin: 10px 0 8px; letter-spacing: -.005em; }
+.meta .stamp { margin-left: auto; }
+.byline { color: var(--muted); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kwl { color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.6; }
+.kwl .sep { color: var(--line2); }
+.addnote { margin: 2px 0 14px; font-size: 13px; color: var(--muted); }
+.authors { color: var(--ink2); font-size: 14px; }
+.venue { color: var(--muted); font-size: 13.5px; font-style: italic; margin-top: 2px; }
+.kws { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; }
+.kw { font-size: 12.5px; padding: 2px 9px; border: 1px solid var(--line2); border-radius: 99px; color: var(--ink2); background: var(--card); }
+.abs { font: 17.5px/1.72 var(--serif); color: #2e2821; margin: 18px 0 10px; padding: 22px 26px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+.abs .lab { font: 700 11.5px/1 var(--sans); letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+.abs.none { color: var(--muted); font-style: italic; }
+mark.ev { background: linear-gradient(transparent 12%, var(--mark) 12%, var(--mark) 88%, transparent 88%); color: inherit; padding: 0 1px; border-radius: 3px; }
+mark.ev.flash { animation: flash 1.2s ease; }
+@keyframes flash { 0%, 40% { background: #ffc94d; box-shadow: 0 0 0 3px #ffc94d; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.hk { text-decoration: underline 2px var(--keep); text-underline-offset: 4px; }
+.hx { text-decoration: underline 2px var(--excl); text-underline-offset: 4px; }
+.stamp { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; padding: 4px 11px; border-radius: 8px; }
+.stamp.k { background: var(--keep-soft); color: var(--keep); } .stamp.x { background: var(--excl-soft); color: var(--excl); }
+.note { width: 100%; margin: 6px 0 18px; border: 1px dashed var(--line2); background: transparent; border-radius: 10px; padding: 8px 12px; font-size: 13.5px; resize: vertical; min-height: 38px; }
+.note:focus { outline: none; border-style: solid; border-color: var(--brand); background: var(--card); }
+
+.decide { position: sticky; bottom: 0; background: linear-gradient(rgba(246, 242, 234, 0), var(--bg) 26%); padding: 20px 34px 12px; }
+.decide .row { max-width: 792px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.big { border: 0; border-radius: 14px; padding: 13px 18px; font-size: 16.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform .06s, box-shadow .2s; box-shadow: var(--shadow); }
+.big:active { transform: translateY(1px); }
+.big.x { background: var(--card); color: var(--excl); border: 2px solid #f0c9c2; }
+.big.x:hover, .big.x.sel { background: var(--excl); color: #fff; border-color: var(--excl); }
+.big.k { background: var(--keep); color: #fff; border: 2px solid var(--keep); }
+.big.k:hover { filter: brightness(1.06); }
+.big.k.sel { box-shadow: 0 0 0 4px #bfe3cc; }
+.big small { font-weight: 500; opacity: .8; font-size: 13px; }
+.reasons { display: flex; gap: 5px; align-items: center; font-size: 12.5px; color: var(--muted); overflow-x: auto; scrollbar-width: none; min-width: 0; }
+.reasons > span { white-space: nowrap; margin-right: 2px; }
+.rc { flex: none; border: 1px solid #f1d8d2; background: var(--card); color: var(--excl); border-radius: 8px; padding: 3px 8px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.rc i { font-style: normal; opacity: .55; margin-right: 3px; font-weight: 500; }
+.rc:hover, .rc.sel { background: var(--excl-soft); border-color: var(--excl); }
+.rc.sug { box-shadow: 0 0 0 2px var(--ai-soft); border-color: var(--ai); }
+.minor { max-width: 792px; margin: 10px auto 0; display: flex; gap: 12px; justify-content: space-between; align-items: center; font-size: 13px; }
+.navs { display: flex; gap: 2px; flex: none; }
+.ib { border: 0; background: none; width: 32px; height: 30px; border-radius: 8px; color: var(--ink2); font-size: 15px; }
+.ib:hover { background: var(--brand-soft); color: var(--brand); }
+.ib.on { color: #b7791f; }
+.ib:disabled { opacity: .35; cursor: default; background: none; }
+.lnk { border: 0; background: none; color: var(--ink2); padding: 4px 6px; border-radius: 7px; }
+.lnk:hover { background: var(--brand-soft); color: var(--brand); }
+.lnk.on { color: #b7791f; }
+
+.side { border-left: 1px solid var(--line); background: var(--panel); overflow: auto; padding: 22px 18px 30px; }
+.critbox summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.critbox summary::-webkit-details-marker { display: none; }
+.critbox summary h3 { margin: 0; }
+.critbox summary .hint::after { content: ' ▾'; }
+.critbox[open] summary { margin-bottom: 10px; }
+.critbox[open] summary .hint::after { content: ' ▴'; }
+.critline { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+.ghost.sm { padding: 6px 12px; font-size: 13px; margin-top: 10px; }
+.menu-wrap { position: relative; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; min-width: 190px; z-index: 10; }
+.menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 8px; font-size: 14px; color: var(--ink2); }
+.menu button:hover { background: var(--brand-soft); color: var(--brand); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.tb.icon { padding: 6px 12px; font-size: 17px; line-height: 1; }
+.finds { padding: 0 14px 10px; display: grid; gap: 6px; }
+.finds .search { margin: 0; }
+details.more { margin-top: 12px; }
+details.more > summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--ink2); }
+details.more[open] > summary { margin-bottom: 10px; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 15px 16px; margin-bottom: 14px; }
+.box h3 { margin: 0 0 10px; font-size: 12px; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; display: flex; align-items: center; justify-content: space-between; }
+.aibox { border-color: #d8d5f5; }
+.verdict { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+.verdict .tag { padding: 3px 10px; border-radius: 8px; }
+.v-exclude .tag { background: var(--excl-soft); color: var(--excl); }
+.v-include .tag { background: var(--keep-soft); color: var(--keep); }
+.v-unsure .tag { background: var(--unsure-soft); color: var(--unsure); }
+.verdict .code { font-size: 13px; color: var(--ink2); font-weight: 600; }
+.why { margin: 10px 0 4px; color: var(--ink); line-height: 1.6; }
+.evl { margin: 8px 0 0; padding: 0; list-style: none; }
+.evl li { font: 14px/1.5 var(--serif); padding: 7px 10px; margin-top: 6px; background: #fffbea; border-left: 3px solid var(--mark); border-radius: 0 8px 8px 0; cursor: pointer; }
+.evl li:hover { background: #fff4c2; }
+.evl li.miss { opacity: .6; cursor: default; }
+.mutedp { color: var(--muted); font-size: 13.5px; margin: 0; }
+.agree { margin-top: 10px; font-size: 12.5px; padding: 6px 9px; border-radius: 8px; }
+.agree.no { background: var(--unsure-soft); color: var(--unsure); }
+.agree.yes { background: #f0efe9; color: var(--muted); }
+.crit { list-style: none; padding: 0; margin: 0; font-size: 13.5px; }
+.crit li { display: grid; grid-template-columns: 46px 1fr; gap: 6px; padding: 5px 0; border-top: 1px dashed var(--line); }
+.crit li:first-child { border-top: 0; }
+.crit .c { font-weight: 700; font-size: 12px; padding-top: 2px; }
+.crit.ic .c { color: var(--keep); } .crit.ec .c { color: var(--excl); }
+.crit .k { color: var(--muted); font-size: 11px; font-weight: 500; }
+.hint { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+
+/* ---------- 开始页 ---------- */
+.setup { max-width: 1060px; margin: 0 auto; padding: 46px 28px 60px; }
+.hero { text-align: center; margin-bottom: 30px; }
+.hero h1 { font-size: 32px; margin: 12px 0 8px; letter-spacing: .02em; }
+.hero p { color: var(--ink2); margin: 0 auto; max-width: 640px; font-size: 15.5px; }
+.steps { display: grid; grid-template-columns: 1fr 1.35fr; gap: 18px; }
+.step { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px; box-shadow: var(--shadow); }
+.step.wide { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.step h2 { font-size: 17px; margin: 0 0 6px; display: flex; align-items: center; gap: 10px; }
+.num { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--brand); color: #fff; font-size: 14px; flex: none; }
+.step p { margin: 0 0 14px; color: var(--ink2); font-size: 14px; }
+.drop { text-align: center; border: 2px dashed var(--line2); border-radius: 14px; padding: 20px 14px 16px; color: var(--ink2); transition: .15s; background: var(--panel); }
+.drop:hover, .drop.over { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
+.drop input { display: none; }
+.files { margin-top: 12px; font-size: 13.5px; }
+.files div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px dashed var(--line); }
+.files div > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.files div > span:last-child { flex: none; }
+.pickrow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+.pick { cursor: pointer; }
+.herobtns { margin-top: 14px; display: flex; gap: 8px; justify-content: center; }
+.seg { display: flex; gap: 4px; background: #efe9df; padding: 4px; border-radius: 12px; margin: 6px 0 18px; }
+.seg button { flex: 1; border: 0; background: none; padding: 7px 10px; border-radius: 9px; font-size: 13.5px; color: var(--ink2); }
+.seg button.on { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+.pane { min-height: 280px; }
+.radios { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+.rd { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; font-weight: 400; cursor: pointer; }
+.aisum { font-size: 13.5px; color: var(--ink2); margin: 0 0 12px; }
+.guide ol { padding-left: 20px; margin: 0 0 14px; line-height: 1.7; font-size: 14px; }
+.guide li { margin-bottom: 6px; }
+.guide h4 { margin: 16px 0 10px; font-size: 12px; color: var(--muted); letter-spacing: .1em; }
+.files .sum { font-weight: 700; color: var(--ink); }
+.lab2 { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 13.5px; margin: 10px 0 6px; }
+.lab2 .ic { color: var(--keep); } .lab2 .ec { color: var(--excl); }
+textarea.ta { width: 100%; min-height: 96px; border: 1px solid var(--line2); border-radius: 10px; padding: 9px 11px; font-size: 13.5px; line-height: 1.55; resize: vertical; background: var(--panel); }
+textarea.ta:focus, input.in:focus, select.in:focus { outline: none; border-color: var(--brand); background: var(--card); }
+input.in, select.in { width: 100%; border: 1px solid var(--line2); border-radius: 9px; padding: 8px 10px; font-size: 13.5px; background: var(--panel); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.primary { border: 0; background: var(--brand); color: #fff; padding: 12px 22px; border-radius: 12px; font-weight: 700; font-size: 15.5px; box-shadow: var(--shadow); white-space: nowrap; }
+.primary:disabled { background: var(--line2); cursor: not-allowed; box-shadow: none; }
+.primary.ai { background: var(--ai); }
+.ghost { border: 1px solid var(--line2); background: var(--card); padding: 8px 14px; border-radius: 10px; font-size: 13.5px; white-space: nowrap; }
+.ghost:hover { border-color: var(--brand); color: var(--brand); }
+.foot { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 26px; }
+
+/* ---------- 弹窗 ---------- */
+.mask { position: fixed; inset: 0; background: rgba(40, 30, 20, .32); display: grid; place-items: center; z-index: 20; padding: 20px; }
+.modal { background: var(--panel); border-radius: 18px; box-shadow: 0 20px 60px rgba(40, 30, 20, .25); width: min(680px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 24px 26px; }
+.modal h2 { margin: 0 0 4px; font-size: 20px; display: flex; justify-content: space-between; align-items: center; }
+.modal .x { border: 0; background: none; font-size: 22px; color: var(--muted); line-height: 1; }
+.modal .sub { color: var(--ink2); font-size: 13.5px; margin: 0 0 16px; }
+.fld { margin-bottom: 12px; }
+.fld label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 5px; }
+.fld .hint { margin-top: 4px; }
+.privacy { background: var(--ai-soft); color: #39338a; border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.6; margin: 4px 0 14px; }
+.est { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink2); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 10px 0; }
+.est b { color: var(--ink); }
+.actions { display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+details.pp summary { cursor: pointer; font-size: 13px; color: var(--ink2); }
+details.pp pre { white-space: pre-wrap; font-size: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px; max-height: 240px; overflow: auto; }
+.ex-grid { display: grid; gap: 10px; }
+.ex { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); background: var(--card); border-radius: 12px; }
+.ex b { display: block; } .ex span { color: var(--muted); font-size: 13px; }
+.ex > :last-child { flex: none; }   /* 说明文字再长，右边的按钮也不被挤成两行 */
+pre.prisma { white-space: pre-wrap; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font: 13.5px/1.7 var(--sans); }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 14px; align-items: center; }
+.keys kbd { opacity: 1; margin: 0; justify-self: start; }
+.duprow { padding: 8px 0; border-top: 1px dashed var(--line); font-size: 13.5px; }
+.duprow span { color: var(--muted); font-size: 12.5px; }
+.toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 10px; font-size: 14px; z-index: 30; box-shadow: var(--shadow); }
+
+@media (max-width: 1180px) { .main { grid-template-columns: 250px minmax(0, 1fr) 300px; } .paper { padding: 22px 24px 0; } .decide { padding: 18px 24px 14px; } }
+@media (max-width: 960px) {
+  .shell { height: auto; } .main { grid-template-columns: 1fr; } .list { max-height: 260px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .side { border-left: 0; } .steps { grid-template-columns: 1fr; } .step.wide { flex-direction: column; align-items: stretch; }
+  .top { flex-wrap: wrap; } .prog { order: 3; flex-basis: 100%; max-width: none; }
+}
+
+/* ---------- 多人筛选 ---------- */
+.dot.c { background: var(--unsure); }
+.stamp.c { background: var(--unsure-soft); color: var(--unsure); }
+.stamp.g { background: #efebe4; color: var(--ink2); font-weight: 600; }
+.seg.mini { margin: 0; padding: 3px; flex: none; }
+.seg.mini button { flex: none; padding: 5px 12px; font-size: 13px; }
+.ridchip { font-size: 12px; font-weight: 700; color: var(--brand); background: var(--brand-soft); border-radius: 99px; padding: 2px 9px; white-space: nowrap; }
+.rvrow { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px dashed var(--line); font-size: 14px; }
+.rvrow:first-child { border-top: 0; }
+.rvrow .lnk { margin-left: auto; }
+.rv { display: grid; grid-template-columns: 52px 1fr; gap: 3px 8px; align-items: center; padding: 7px 0; border-top: 1px dashed var(--line); font-size: 13.5px; }
+.rv:first-of-type { border-top: 0; }
+.rv b { font-size: 12.5px; }
+.rv .stamp { padding: 2px 8px; font-size: 12px; justify-self: start; }
+.rv .hint { grid-column: 2; }
+.teamrow { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 2px 0 4px; font-size: 14px; }
+.teamrow .lab { font-weight: 600; }
+.teamrow input.in { width: 150px; }
+.step.wide .left { display: grid; gap: 8px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(() => {
+'use strict';
+
+/* ================= 文字（中 / 英） ================= */
+const I18N = {
+  zh: {
+    appName: '摘要筛选助手', appSub: '范围综述 · 题目和摘要筛选',
+    heroP: '导入 bib，一条条看题目和摘要，决定排除还是保留进入全文。文献只在你自己的浏览器里。',
+    s1: '导入 bib 文件', s1p: '可以一次选多个（比如 ACM DL 和 IEEE Xplore 各一个），重复记录自动合并。',
+    recs: '条', total: '合计', dupFound: '去掉重复 {0} 条，剩 {1} 条待筛', viewDups: '看看哪些重复',
+    clearFiles: '清空重新导入',
+    s2: '写下纳入和排除标准', s2p: '一行一条，开头可以写编号（IC1、EC1…），不写会自动编号。',
+    icLab: '纳入标准（IC）', ecLab: '排除标准（EC）', fillEx: '填入示例（AI 写作工具）',
+    icPh: 'IC1 写作者用 AI 写作：…\nIC2 有实证评估：…', ecPh: 'EC1 没有写作者参与：…\nEC2 工具不在范围内：…',
+    hlLab: '高亮词（可选）', hlKeep: '支持保留的词，用逗号隔开', hlExcl: '提示排除的词，用逗号隔开',
+    hlHint: '摘要里出现这些词会画上绿线或红线，扫一眼就能找到关键处。',
+    s3: '开始筛选', s3p: '文献和进度自动存在这个浏览器里，关掉再打开会接着上次。', startBtn: '开始筛选（{0} 条）', needFiles: '先导入 bib 文件',
+    continueBtn: '继续筛选（已筛 {0} / {1}）', resumed: '找到这批文献之前的进度，已经接着上次继续', restored: '已恢复上次的文献和进度',
+    screened: '已筛', kept: '保留', excluded: '排除', todo: '未筛', aiDone: 'AI 已预审',
+    tAll: '全部', tTodo: '未筛', tKeep: '保留', tExcl: '排除', tStar: '星标', tDiff: '和 AI 不一致', searchPh: '搜索题目、摘要、关键词', noItems: '这里没有记录',
+    btnAI: 'AI 预审', btnCrit: '标准', btnExport: '导出', btnHelp: '快捷键',
+    noAbstract: '这条记录没有摘要。可以去另一个数据库查一下，或者保留到全文阶段再看。', noAbsChip: '无摘要',
+    fromFiles: '来自',
+    exclBtn: '排除', keepBtn: '保留，进入全文', exclReason: '排除理由（可选）', undo: '撤销', prev: '上一条', next: '下一条',
+    star: '标星（边界案例）', notePh: '备注：比如为什么这样判（边界案例最好写一句）',
+    stampK: '已保留', stampX: '已排除',
+    aiTitle: 'AI 预审', aiNone: '这条还没有 AI 预审。', aiOne: '只预审这一条', aiSetup: '设置 AI 预审',
+    vInclude: '建议保留', vExclude: '建议排除', vUnsure: '看不出来，建议保留到全文',
+    evMiss: '（摘要里没找到这句原文）', aiErr: '这条预审失败：', retry: '重试',
+    agreeNo: '你的判断和 AI 不一样，确认一下依据', agreeYes: '和 AI 判断一致',
+    critTitle: '筛选标准', editCrit: '修改', critEmpty: '还没有写标准。',
+    keysHint: '排除时按数字键可以同时记下理由',
+    critModal: '纳入和排除标准', critSub: '修改后，已有的 AI 预审结果不会自动更新；需要的话可以重新预审。', save: '保存',
+    aiModal: 'AI 预审（可选）', aiSub: '让便宜的大模型（比如 DeepSeek）先看一遍题目和摘要，给出建议、理由和证据。每一条仍由你决定。',
+    privacy: '会发给模型服务商的：你的标准，和每条记录的题目、关键词、摘要。密钥只存在这个浏览器里。',
+    keyLab: 'API Key', keyPh: '在 DeepSeek 开放平台创建，形如 sk-…', remember: '在这个浏览器里记住密钥', baseLab: '接口地址', modelLab: '模型',
+    modelHint: 'DeepSeek 现在的模型名是 deepseek-flash（便宜）和 deepseek-v4-pro，以 DeepSeek 官方文档为准。其他兼容 OpenAI 格式的服务也可以，改地址和模型名即可。',
+    thinkLab: '让模型先“思考”再判断（更慢、更贵，一般不需要）',
+    concLab: '同时预审几条', priceLab: '单价（元 / 百万 tokens，输入 / 输出）', priceHint: '只用来估算花费，以服务商官网价格为准。DeepSeek 空闲时段半价。',
+    extraLab: '给 AI 的补充说明（可选）', extraPh: '比如：会议论文和期刊论文都算；只看英文…',
+    scopeLab: '预审范围', scopeTodo: '还没预审过的', scopeAll: '全部重新预审', scopeUnscreened: '我还没筛的',
+    estN: '要预审', estTok: '预计约', estCost: '约', tokens: 'tokens', yuan: '元',
+    used: '已用', start: '开始预审', pause: '暂停', resume: '继续', stop: '停止', testOne: '先试一条（当前这条）', retryFailed: '重试失败的 {0} 条',
+    promptPrev: '看看发给模型的提示词', needKey: '先填 API Key', needCrit: '先写好纳入和排除标准', running: '预审中… {0}/{1}', aiFinished: 'AI 预审完成：{0} 条，失败 {1} 条',
+    exportTitle: '导出', exportSub: '筛选结果随时可以导出。',
+    exCsv: '筛选结果表（CSV）', exCsvD: '每条记录一行：你的判断、排除理由、星标、备注、AI 建议和理由。Excel 可以直接打开。',
+    exBib: '保留的记录（.bib）', exBibD: '只含保留进入全文的记录，下一步读全文时用。', exBibTeamD: '按统一后的最终结果，只含保留进入全文的记录。',
+    exJson: '进度备份（JSON）', exJsonD: '换电脑或换浏览器时，先导入同样的 bib，再导入这个文件接着筛。',
+    exImp: '导入进度备份', prisma: '流程图数字（可复制）', copy: '复制', copied: '已复制',
+    pImported: '导入记录', pDup: '去掉重复', pAfter: '去重后', pScreened: '题目和摘要筛选', pExcl: '排除', pKept: '保留进入全文', pTodo: '还没筛',
+    pNoReason: '没注明理由', pAI: 'AI 预审', pAgree: '你的判断和 AI 一致的比例', pUnres: '还有分歧待统一', pFinal: '（按统一后的最终结果）',
+    download: '下载',
+    kExcl: '排除', kKeep: '保留，进入全文', kNum: '排除，并记下第 n 条排除理由', kUndo: '撤销上一次判断', kNav: '上一条 / 下一条（不做判断）', kStar: '标星（边界案例）', kNote: '写备注', kEsc: '关掉弹窗 / 离开备注',
+    dupTitle: '合并了哪些重复记录', dupSub: '按 DOI，或者“题目 + 年份”一致来判断。保留摘要更完整的那一条。',
+    impOk: '进度已导入', impBad: '这个进度文件和当前导入的文献对不上', parseFail: '没有从 {0} 里读到记录',
+    back: '回到导入页（进度会保留）', footer: '配套工具 · 栗子悟了《从零写一篇范围综述》',
+    err401: '密钥不对或已失效（401）', err402: '账户余额不足（402）', errHttp: '请求失败（{0}）', errRetry: '多次重试后仍失败', errParse: '模型返回的格式不对',
+    starShort: '标星', aiAny: 'AI 建议：全部', aiUnsureShort: '看不出来',
+    more: '更多', langSwitch: 'English', menuHome: '回到导入页', addNote: '写备注', critCount: '纳入 {0} · 排除 {1}', advanced: '更多：并发、单价、给 AI 的补充说明、提示词',
+    langBtn: 'EN', allDone: '全部筛完了，可以在右上角导出结果',
+    btnSettings: '设置', btnGuide: '使用说明', setTitle: '设置', tabFiles: '文献', tabTeam: '审阅人', tabLang: '语言', tabApi: 'AI 预审', tabHelp: '使用说明',
+    aiModeOff: '不用 AI，自己筛', aiModeOn: '用 AI 预审', aiOffNote: '不用 AI 也能完整筛选：导入、筛选、导出、进度保存都一样。想提速的时候，再回来打开 AI 预审。',
+    useAI: '用 AI 预审（可选）', useAIHint: '需要 DeepSeek 等模型的 API key；不用也能完整筛选。',
+    dropBoth: '把 .bib 文件或者整个文件夹拖到这里', pickFiles: '选择 bib 文件', pickDir: '选择文件夹', noBib: '没有找到 .bib 文件',
+    filesSub: '选一个或几个 bib 文件；也可以选一个文件夹，里面所有的 bib 文件都会导入。重复记录自动合并。',
+    uiLang: '界面语言', outLang: 'AI 输出语言', other: '其他', otherPh: '自己填，比如：日本語、Español、Deutsch',
+    outLangHint: 'AI 预审的理由用这种语言写；证据照摘要原文摘录，不翻译。',
+    apiSub: 'AI 预审用的接口。默认是 DeepSeek；其他兼容 OpenAI 格式的服务也可以，改接口地址和模型名即可。', getKey: '在 DeepSeek 开放平台创建 API key',
+    aiNeedKey: '还没有填 API key。', goSettings: '去设置', aiSummary: '模型 {0} · 输出语言 {1}', change: '修改',
+    kTitle: '快捷键', guideMore: '更详细的说明，见随工具附带的《摘要筛选助手_使用说明.md》。',
+    teamQ: '几个人筛？', teamSolo: '只有我', teamMulti: '两个人或更多', ridLab: '我的编号', ridPh: '比如 R1 或名字缩写',
+    teamHint: '投稿的论文一般要至少两个人独立筛选；课程综述、开题、PhD Qualifying Examination，一个人筛也可以。',
+    teamHint2: '每个人各自导入同样的 bib、各筛一遍；筛完在“多人筛选”里导出自己的结果，再导入别人的。',
+    needRid: '先填上你的编号', btnTeam: '多人筛选', modeSelf: '我的筛选', modeTeam: '统一结果',
+    teamTitle: '多人筛选', teamSub: '每个人独立筛完后，导出自己的结果发给对方；导入对方的结果，工具会算出一致率，并把分歧单独列出来，大家一起统一。',
+    exMine: '导出我的结果（给合作者）', exMineD: '你对每条记录的判断、理由和备注，文件名带你的编号。',
+    impOthers: '导入合作者的结果', impOthersD: '对方用“导出我的结果”得到的文件，可以一次选几个。',
+    reviewers: '审阅人', me: '我', screenedN: '已筛 {0} 条', remove: '移除',
+    agreeTitle: '一致性（可以写进论文）', agreeNone: '导入至少一位合作者的结果后，这里会算出一致率。',
+    startTeam: '开始统一分歧（{0} 条）', allResolved: '分歧都统一好了，去看看', exCompare: '导出对比表（CSV）',
+    exCompareD: '对比表每条记录一行，并排列出每个人的判断、理由和备注，标出是否一致；可以直接交给 AI 汇总分歧。',
+    tConf: '有分歧', tUnres: '待统一', tAgree: '一致', tPart: '没筛完',
+    teamProg: '分歧已统一 {0} / {1}', finalN: '最终保留 {0} · 排除 {1}',
+    finalK: '最终：保留', finalX: '最终：排除', conflictStamp: '有分歧，待统一', agreedStamp: '一致',
+    rvBox: '各人的判断', notYet: '还没筛', finalLab: '最终',
+    impMineSkip: '{0} 是你自己的编号，跳过了', importedRv: '已导入 {0} 的结果：对上 {1} 条', impNotMatched: '{0} 条对不上（导入的 bib 可能不一样）',
+    impBadTeam: '这不是筛选结果文件', teamDone: '分歧都统一好了',
+  },
+  en: {
+    appName: 'Abstract Screener', appSub: 'Scoping review · title & abstract screening',
+    heroP: 'Import your .bib files, read each title and abstract, and decide: exclude, or keep for full text. Everything stays in your browser.',
+    s1: 'Import .bib files', s1p: 'Select several at once (e.g. one from ACM DL and one from IEEE Xplore). Duplicates are merged automatically.',
+    recs: 'records', total: 'Total', dupFound: '{0} duplicates removed, {1} left to screen', viewDups: 'See duplicates',
+    clearFiles: 'Clear and start over',
+    s2: 'Write your inclusion and exclusion criteria', s2p: 'One per line. Start with a code (IC1, EC1…), or let the tool number them.',
+    icLab: 'Inclusion criteria (IC)', ecLab: 'Exclusion criteria (EC)', fillEx: 'Fill in the example (AI writing tools)',
+    icPh: 'IC1 Writers write with AI: …\nIC2 Empirical evaluation: …', ecPh: 'EC1 No writers involved: …\nEC2 Tool out of scope: …',
+    hlLab: 'Highlight words (optional)', hlKeep: 'Words that point to keep, comma-separated', hlExcl: 'Words that point to exclude, comma-separated',
+    hlHint: 'These words get a green or red underline in the abstract, so key spots jump out.',
+    s3: 'Start screening', s3p: 'Files and progress are saved in this browser; close it and pick up where you left off.', startBtn: 'Start screening ({0})', needFiles: 'Import .bib files first',
+    continueBtn: 'Continue ({0} / {1} screened)', resumed: 'Found earlier progress for these records and picked up where you left off', restored: 'Restored your files and progress',
+    screened: 'Screened', kept: 'Kept', excluded: 'Excluded', todo: 'To do', aiDone: 'AI pre-screened',
+    tAll: 'All', tTodo: 'To do', tKeep: 'Kept', tExcl: 'Excluded', tStar: 'Starred', tDiff: 'Differs from AI', searchPh: 'Search titles, abstracts, keywords', noItems: 'Nothing here',
+    btnAI: 'AI pre-screen', btnCrit: 'Criteria', btnExport: 'Export', btnHelp: 'Shortcuts',
+    noAbstract: 'This record has no abstract. Check the other database, or keep it for the full-text stage.', noAbsChip: 'No abstract',
+    fromFiles: 'From',
+    exclBtn: 'Exclude', keepBtn: 'Keep for full text', exclReason: 'Reason (optional)', undo: 'Undo', prev: 'Previous', next: 'Next',
+    star: 'Star (borderline)', notePh: 'Note: e.g. why you decided this way (worth a line for borderline cases)',
+    stampK: 'Kept', stampX: 'Excluded',
+    aiTitle: 'AI pre-screen', aiNone: 'No AI pre-screen for this record yet.', aiOne: 'Pre-screen this one', aiSetup: 'Set up AI pre-screen',
+    vInclude: 'Suggests keep', vExclude: 'Suggests exclude', vUnsure: 'Unclear: keep for full text',
+    evMiss: '(not found verbatim in the abstract)', aiErr: 'Pre-screen failed: ', retry: 'Retry',
+    agreeNo: 'Your decision differs from the AI. Double-check the evidence.', agreeYes: 'Same as the AI',
+    critTitle: 'Criteria', editCrit: 'Edit', critEmpty: 'No criteria yet.',
+    keysHint: 'Press a number while excluding to record the reason',
+    critModal: 'Inclusion and exclusion criteria', critSub: 'Changing them does not update existing AI results; re-run the pre-screen if needed.', save: 'Save',
+    aiModal: 'AI pre-screen (optional)', aiSub: 'Let an inexpensive model (such as DeepSeek) read every title and abstract first and suggest a decision, a reason and evidence. Every record is still your call.',
+    privacy: 'Sent to the model provider: your criteria and each record\'s title, keywords and abstract. Your key stays in this browser.',
+    keyLab: 'API key', keyPh: 'Create one on the DeepSeek platform, starts with sk-…', remember: 'Remember the key in this browser', baseLab: 'Endpoint', modelLab: 'Model',
+    modelHint: 'DeepSeek\'s current models are deepseek-flash (cheap) and deepseek-v4-pro; check DeepSeek\'s docs. Any OpenAI-compatible service works too: change the endpoint and model name.',
+    thinkLab: 'Let the model "think" before deciding (slower and pricier; usually not needed)',
+    concLab: 'Parallel requests', priceLab: 'Price (per million tokens, input / output)', priceHint: 'Only for the cost estimate. Check the provider\'s current prices; DeepSeek is half price off-peak.',
+    extraLab: 'Extra notes for the AI (optional)', extraPh: 'e.g. conference and journal papers both count; English only…',
+    scopeLab: 'Which records', scopeTodo: 'Not yet pre-screened', scopeAll: 'All (redo)', scopeUnscreened: 'Ones I haven\'t screened',
+    estN: 'Records', estTok: 'About', estCost: 'About', tokens: 'tokens', yuan: '',
+    used: 'Used', start: 'Start', pause: 'Pause', resume: 'Resume', stop: 'Stop', testOne: 'Try one first (current record)', retryFailed: 'Retry {0} failed',
+    promptPrev: 'Show the prompt sent to the model', needKey: 'Enter an API key first', needCrit: 'Write your criteria first', running: 'Pre-screening… {0}/{1}', aiFinished: 'AI pre-screen done: {0} records, {1} failed',
+    exportTitle: 'Export', exportSub: 'Export your results at any time.',
+    exCsv: 'Results table (CSV)', exCsvD: 'One row per record: your decision, reason, star, note, and the AI suggestion and reason. Opens in Excel.',
+    exBib: 'Kept records (.bib)', exBibD: 'Only the records kept for full-text reading, for the next step.', exBibTeamD: 'Based on the final team decisions: only the records kept for full text.',
+    exJson: 'Progress backup (JSON)', exJsonD: 'To continue on another computer or browser: import the same .bib files, then this file.',
+    exImp: 'Import a progress backup', prisma: 'Numbers for the flow diagram (copyable)', copy: 'Copy', copied: 'Copied',
+    pImported: 'Records imported', pDup: 'Duplicates removed', pAfter: 'After deduplication', pScreened: 'Title & abstract screening', pExcl: 'Excluded', pKept: 'Kept for full text', pTodo: 'Not yet screened',
+    pNoReason: 'No reason given', pAI: 'AI pre-screen', pAgree: 'Your decisions matching the AI', pUnres: 'Disagreements still to resolve', pFinal: ' (final team decisions)',
+    download: 'Download',
+    kExcl: 'Exclude', kKeep: 'Keep for full text', kNum: 'Exclude with exclusion criterion n', kUndo: 'Undo the last decision', kNav: 'Previous / next (no decision)', kStar: 'Star (borderline)', kNote: 'Write a note', kEsc: 'Close dialog / leave the note',
+    dupTitle: 'Merged duplicates', dupSub: 'Matched by DOI, or by identical title + year. The copy with the fuller abstract is kept.',
+    impOk: 'Progress imported', impBad: 'This progress file does not match the records imported', parseFail: 'No records found in {0}',
+    back: 'Back to the import page (progress is kept)', footer: 'Companion tool · Scoping Review from Scratch (栗子悟了)',
+    err401: 'Invalid or expired key (401)', err402: 'Insufficient balance (402)', errHttp: 'Request failed ({0})', errRetry: 'Still failing after several retries', errParse: 'The model\'s reply was not valid JSON',
+    starShort: 'Star', aiAny: 'AI suggestion: any', aiUnsureShort: 'Unclear',
+    more: 'More', langSwitch: '中文', menuHome: 'Back to import', addNote: 'Add a note', critCount: '{0} inclusion · {1} exclusion', advanced: 'More: parallel requests, price, notes for the AI, prompt',
+    langBtn: '中文', allDone: 'All records screened. Export your results from the top right.',
+    btnSettings: 'Settings', btnGuide: 'How to use', setTitle: 'Settings', tabFiles: 'Files', tabTeam: 'Reviewers', tabLang: 'Language', tabApi: 'AI pre-screen', tabHelp: 'How to use',
+    aiModeOff: 'No AI, screen by myself', aiModeOn: 'Use the AI pre-screen', aiOffNote: 'Everything works without AI: importing, screening, exporting and saving progress. Turn the AI pre-screen on here whenever you want to speed things up.',
+    useAI: 'Use the AI pre-screen (optional)', useAIHint: 'Needs an API key for DeepSeek or a similar model; screening works fully without it.',
+    dropBoth: 'Drop .bib files or a whole folder here', pickFiles: 'Choose .bib files', pickDir: 'Choose a folder', noBib: 'No .bib files found',
+    filesSub: 'Choose one or more .bib files, or a folder: every .bib file inside it is imported. Duplicates are merged automatically.',
+    uiLang: 'Interface language', outLang: 'AI output language', other: 'Other', otherPh: 'Type it, e.g. 日本語, Español, Deutsch',
+    outLangHint: 'The AI writes its reasons in this language; evidence is quoted verbatim from the abstract, never translated.',
+    apiSub: 'The endpoint used for the AI pre-screen. DeepSeek by default; any OpenAI-compatible service works if you change the endpoint and model name.', getKey: 'Create an API key on the DeepSeek platform',
+    aiNeedKey: 'No API key yet.', goSettings: 'Open settings', aiSummary: 'Model {0} · output language {1}', change: 'Change',
+    kTitle: 'Keyboard shortcuts', guideMore: 'For details, see the guide that comes with the tool (摘要筛选助手_使用说明.md).',
+    teamQ: 'How many reviewers?', teamSolo: 'Just me', teamMulti: 'Two or more', ridLab: 'My reviewer ID', ridPh: 'e.g. R1 or your initials',
+    teamHint: 'Papers for publication usually need at least two independent reviewers; for a course review, a proposal or a PhD Qualifying Examination, one is fine.',
+    teamHint2: 'Each reviewer imports the same .bib files and screens on their own; then, under "Team screening", export your results and import the others\'.',
+    needRid: 'Enter your reviewer ID first', btnTeam: 'Team screening', modeSelf: 'My screening', modeTeam: 'Consensus',
+    teamTitle: 'Team screening', teamSub: 'After screening independently, export your results and send them to the others. Import theirs: the tool computes agreement and lists the disagreements for you to resolve together.',
+    exMine: 'Export my results (for collaborators)', exMineD: 'Your decision, reason and note for every record; the file name carries your ID.',
+    impOthers: 'Import collaborators\' results', impOthersD: 'Files they exported with "Export my results"; you can select several.',
+    reviewers: 'Reviewers', me: 'me', screenedN: '{0} screened', remove: 'Remove',
+    agreeTitle: 'Agreement (for your paper)', agreeNone: 'Import at least one collaborator\'s results to see agreement.',
+    startTeam: 'Resolve disagreements ({0})', allResolved: 'All disagreements resolved: review', exCompare: 'Export comparison (CSV)',
+    exCompareD: 'One row per record with every reviewer\'s decision, reason and note side by side, marked agree or disagree; you can hand it to an AI to summarize.',
+    tConf: 'Disagreements', tUnres: 'To resolve', tAgree: 'Agreed', tPart: 'Incomplete',
+    teamProg: 'Disagreements resolved {0} / {1}', finalN: 'Final: kept {0} · excluded {1}',
+    finalK: 'Final: keep', finalX: 'Final: exclude', conflictStamp: 'Disagreement: to resolve', agreedStamp: 'Agreed',
+    rvBox: 'Each reviewer', notYet: 'not screened', finalLab: 'Final',
+    impMineSkip: '{0} is your own ID; skipped', importedRv: 'Imported {0}: {1} matched', impNotMatched: '{0} not matched (different .bib files?)',
+    impBadTeam: 'This is not a results file', teamDone: 'All disagreements resolved',
+  },
+};
+const GUIDE = {
+  zh: [
+    '<b>导入</b>：选择 bib 文件，或者直接选整个文件夹（里面所有的 bib 文件都会导入）。ACM DL、IEEE Xplore 等导出的都可以，重复记录自动合并。',
+    '<b>写标准</b>：一行一条纳入或排除标准，开头可以写编号。不知道怎么写，先点“填入示例”看看格式。',
+    '<b>筛选</b>：看题目和摘要，按 ← 排除、→ 保留进入全文；排除时按数字键，顺手记下是哪条排除标准。看不出来的，保留。',
+    '<b>多人筛选</b>：投稿的论文一般要至少两个人独立筛。开始时选“两个人或更多”，填上自己的编号；每个人筛完，在“多人筛选”里导出自己的结果、导入别人的，工具会算出一致率、列出分歧；大家切到“统一结果”，一起逐条定下来。',
+    '<b>AI 预审（可选，默认不用）</b>：不用 AI 也能完整筛选。想提速时，在 ⚙ 设置 → AI 预审 里选“用 AI 预审”，填上 API key，再点右上角“AI 预审”。AI 给出建议和理由，并在摘要里划出证据；每一条仍由你决定。',
+    '<b>导出</b>：点“导出”，下载筛选结果表、保留下来的 bib 和流程图数字。',
+    '<b>保存</b>：文献和进度自动存在这个浏览器里，关掉再打开会接着上次。换电脑、换浏览器或清理浏览器数据之前，先在“导出”里下载进度备份。',
+  ],
+  en: [
+    '<b>Import</b>: choose .bib files, or a whole folder (every .bib file inside is imported). Exports from ACM DL, IEEE Xplore and others all work; duplicates are merged.',
+    '<b>Criteria</b>: one inclusion or exclusion criterion per line, optionally starting with a code. Click "Fill in the example" to see the format.',
+    '<b>Screen</b>: read the title and abstract, press ← to exclude and → to keep for full text; press a number while excluding to record the criterion. When unsure, keep.',
+    '<b>Team screening</b>: papers for publication usually need at least two independent reviewers. Choose "Two or more" at the start and enter your ID. After screening, export your results under "Team screening" and import the others\'; the tool computes agreement and lists disagreements, which you resolve together in "Consensus".',
+    '<b>AI pre-screen (optional, off by default)</b>: everything works without AI. To speed up, choose "Use the AI pre-screen" under ⚙ Settings → AI pre-screen, enter an API key, then click "AI pre-screen" at the top right. The AI suggests a decision and a reason and marks the evidence in the abstract; every record is still your call.',
+    '<b>Export</b>: click "Export" to download the results table, the kept records as .bib, and the numbers for your flow diagram.',
+    '<b>Saving</b>: files and progress are saved in this browser; close it and pick up where you left off. Before switching computers or browsers, or clearing browser data, download a progress backup under "Export".',
+  ],
+};
+const LS = 'abs-screener:';
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(LS + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(LS + k, JSON.stringify(v)); } catch (e) { /* 存储满了或被禁用 */ } },
+  del(k) { try { localStorage.removeItem(LS + k); } catch (e) { /* 忽略 */ } },
+};
+// 文献原文和进度可能有好几 MB，放 IndexedDB；用不了时退回 localStorage
+const DB = (() => {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    if (!window.indexedDB) { rej(new Error('no indexedDB')); return; }
+    const r = indexedDB.open('abs-screener', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const run = (mode, fn) => open().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('kv', mode); const q = fn(tx.objectStore('kv'));
+    tx.oncomplete = () => res(q ? q.result : undefined); tx.onerror = () => rej(tx.error);
+  }));
+  return {
+    async get(k) { try { return await run('readonly', s => s.get(k)); } catch (e) { return store.get('db:' + k, undefined); } },
+    async set(k, v) { try { await run('readwrite', s => s.put(v, k)); } catch (e) { store.set('db:' + k, v); } },
+  };
+})();
+let LANG = store.get('lang', (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
+const t = (k, ...a) => { let s = (I18N[LANG][k] ?? I18N.zh[k] ?? k); a.forEach((v, i) => { s = s.split('{' + i + '}').join(v); }); return s; };
+
+const EXAMPLE = {
+  zh: {
+    ic: 'IC1 写作者用 AI 写作：写作者在写作过程中使用 AI 工具，工具生成或修改自然语言文本，或者给出反馈\nIC2 有实证评估：研究中有写作者参与的评估，例如实验、现场部署、访谈或问卷\nIC3 文献类型和年份：2018 年以来的期刊论文，或者正式论文集里的完整会议论文（扩展摘要、海报等不算），英文全文\nIC4 需要进一步阅读：题目和摘要看不出是否满足以上标准的，保留到全文阶段再判断',
+    ec: 'EC1 没有写作者参与：只评价模型生成的文本、自动评分模型或语言模型本身\nEC2 工具不在范围内：编程工具、机器翻译，或者只纠拼写和语法、不改写内容的工具\nEC3 检测与诚信：研究的是 AI 生成文本的检测，或者学术诚信问题\nEC4 不是实证研究：社论、观点文章、综述\nEC5 词义不符：检索词用成了别的意思，例如客服机器人、机器人书写、写入数据库\nEC6 重复报告：同一项研究的几篇报告，只保留信息最全的一篇',
+  },
+  en: {
+    ic: 'IC1 Writers write with AI: writers use an AI tool during writing; the tool generates or modifies natural-language text, or gives feedback\nIC2 Empirical evaluation: the study evaluates the tool with writers, e.g. an experiment, field deployment, interviews or surveys\nIC3 Publication type and year: journal articles or full papers in main conference proceedings (not extended abstracts or posters) since 2018, full text in English\nIC4 Requires further reading: when the title and abstract do not show whether the criteria are met, keep the record for full-text reading',
+    ec: 'EC1 No writers involved: only evaluates model-generated text, scoring models or the language model itself\nEC2 Tool out of scope: programming tools, machine translation, or tools that only correct spelling and grammar without rewriting\nEC3 Detection and integrity: studies AI-generated text detection or academic integrity\nEC4 Not empirical research: editorials, opinion pieces, reviews\nEC5 Different sense: search terms used in another sense, e.g. customer-service chatbots, robotic handwriting, writing to databases\nEC6 Duplicate report: several reports of the same study; keep only the most complete one',
+  },
+  keep: 'participants, students, writers, learners, user study, experiment, field study, deployment, interviews, survey, questionnaire, classroom',
+  excl: 'code, programming, developers, translation, detection, detector, plagiarism, integrity, grammatical error correction, spelling, review, editorial, customer, robot, benchmark',
+};
+
+/* ================= 状态 ================= */
+const S = {
+  files: [], records: [], dups: [], byId: {}, sig: '', loadedSig: '',
+  crit: store.get('crit', { icText: '', ecText: '', keep: '', excl: '' }),
+  dec: {}, star: {}, note: {}, ai: {}, hist: [], others: {}, final: {},
+  view: 'setup', mode: 'self', cur: 0, filter: 'all', q: '', aiFilter: 'any', noteOpen: '', critOpen: store.get('critOpen', null),
+  settings: Object.assign({ base: 'https://api.deepseek.com', model: 'deepseek-flash', conc: 4, pin: 2, pout: 8, think: false, extra: '', remember: false, scope: 'todo',
+    outLang: LANG, outOther: '', useAI: false, multi: false, rid: '' }, store.get('settings', {})),
+  usage: { in: 0, out: 0 },
+};
+let KEY = store.get('key', '');
+const aiOn = () => !!S.settings.useAI;
+const multi = () => !!S.settings.multi;
+const myRid = () => String(S.settings.rid || '').trim() || 'R1';
+// 旧版本存下的默认值：DeepSeek 在 2026 年改了模型名和价格
+if (S.settings.model === 'deepseek-chat' && /deepseek/i.test(S.settings.base)) S.settings.model = 'deepseek-flash';
+if (S.settings.pin === 2 && S.settings.pout === 3) S.settings.pout = 8;
+const AI = { running: false, paused: false, queue: [], done: 0, total: 0, fail: 0, ctrl: null };
+
+/* ================= bib 解析 ================= */
+const ACC = { '"': '̈', "'": '́', '`': '̀', '^': '̂', '~': '̃', '=': '̄', '.': '̇', u: '̆', v: '̌', H: '̋', c: '̧', k: '̨', r: '̊' };
+function clean(s) {
+  return String(s || '')
+    .replace(/\{\\([."'`^~=uvHckr])\s*\{?([A-Za-z])\}?\}/g, (m, a, c) => (c + ACC[a]).normalize('NFC'))
+    .replace(/\\([."'`^~=])\{?([A-Za-z])\}?/g, (m, a, c) => (c + ACC[a]).normalize('NFC'))
+    .replace(/\\([&%$#_{}])/g, '$1')
+    .replace(/---/g, '—').replace(/--/g, '–')
+    .replace(/\\[a-zA-Z]+\s*/g, '')
+    .replace(/[{}]/g, '').replace(/~/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+function parseFields(s) {
+  const f = {}; const n = s.length; let i = 0;
+  while (i < n) {
+    while (i < n && /[\s,]/.test(s[i])) i++;
+    let j = i; while (j < n && /[A-Za-z0-9_\-:.]/.test(s[j])) j++;
+    if (j === i) { i++; continue; }
+    const name = s.slice(i, j).toLowerCase(); i = j;
+    while (i < n && /\s/.test(s[i])) i++;
+    if (s[i] !== '=') continue;
+    i++;
+    let val = '';
+    for (;;) {
+      while (i < n && /\s/.test(s[i])) i++;
+      if (s[i] === '{') {
+        let d = 0, k = i;
+        for (; k < n; k++) { if (s[k] === '\\') { k++; continue; } if (s[k] === '{') d++; else if (s[k] === '}' && --d === 0) break; }
+        val += s.slice(i + 1, k); i = k + 1;
+      } else if (s[i] === '"') {
+        let d = 0, k = i + 1;
+        for (; k < n; k++) { if (s[k] === '\\') { k++; continue; } if (s[k] === '{') d++; else if (s[k] === '}') d--; else if (s[k] === '"' && d === 0) break; }
+        val += s.slice(i + 1, k); i = k + 1;
+      } else {
+        let k = i; while (k < n && /[^,\s#}]/.test(s[k])) k++;
+        val += s.slice(i, k); i = k;
+      }
+      while (i < n && /\s/.test(s[i])) i++;
+      if (s[i] === '#') { i++; continue; }
+      break;
+    }
+    f[name] = val;
+  }
+  return f;
+}
+function parseBib(text, file) {
+  const out = []; const n = text.length; let i = 0;
+  for (;;) {
+    const at = text.indexOf('@', i); if (at < 0) break;
+    let j = at + 1; while (j < n && /[A-Za-z]/.test(text[j])) j++;
+    const type = text.slice(at + 1, j).toLowerCase();
+    while (j < n && /\s/.test(text[j])) j++;
+    if (!type || text[j] !== '{') { i = at + 1; continue; }
+    let d = 0, k = j;
+    for (; k < n; k++) { if (text[k] === '\\') { k++; continue; } if (text[k] === '{') d++; else if (text[k] === '}' && --d === 0) break; }
+    const body = text.slice(j + 1, k); const raw = text.slice(at, k + 1); i = k + 1;
+    if (['comment', 'string', 'preamble'].includes(type)) continue;
+    const c = body.indexOf(','); if (c < 0) continue;
+    const key = body.slice(0, c).trim();
+    const f = parseFields(body.slice(c + 1));
+    const authors = clean(f.author).split(/\s+and\s+/i).filter(Boolean).map(a => {
+      if (!a.includes(',')) return a.trim();
+      const [last, ...rest] = a.split(','); return (rest.join(',').trim() + ' ' + last.trim()).trim();
+    });
+    out.push({
+      key, type, file, raw, uid: file + ':' + key,
+      title: clean(f.title), abstract: clean(f.abstract), authors,
+      venue: clean(f.journal || f.booktitle || f.series || f.publisher || ''),
+      year: (clean(f.year).match(/\d{4}/) || [''])[0],
+      keywords: clean(f.keywords || f.keyword || f.author_keywords || '').split(/\s*[;,]\s*/).filter(Boolean),
+      doi: clean(f.doi).toLowerCase().replace(/^https?:\/\/(dx\.)?doi\.org\//, ''),
+    });
+  }
+  return out;
+}
+const normT = s => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9一-鿿]/g, '');
+function rebuild() {
+  const all = S.files.flatMap(f => f.recs);
+  const byDoi = new Map(), byTitle = new Map(), kept = [], dups = [];
+  for (const r0 of all) {
+    const r = Object.assign({}, r0, { files: [r0.file], uids: [r0.uid] });
+    const tk = normT(r.title) + '|' + r.year;
+    const hit = (r.doi && byDoi.get(r.doi)) || (normT(r.title).length > 12 && byTitle.get(tk));
+    if (hit) {
+      dups.push({ title: r.title, a: hit.files[0] + ' · ' + hit.key, b: r.file + ' · ' + r.key });
+      const files = [...new Set([...hit.files, r.file])], uids = [...hit.uids, r.uid];
+      if ((r.abstract || '').length > (hit.abstract || '').length) Object.assign(hit, r);
+      hit.files = files; hit.uids = uids; hit.merged = (hit.merged || 0) + 1;
+      continue;
+    }
+    kept.push(r); if (r.doi) byDoi.set(r.doi, r); byTitle.set(tk, r);
+  }
+  // id 用来存自己的进度；mk 用来和合作者的结果对上（各人导入的文件名可以不一样）
+  kept.forEach(r => { r.id = [...r.uids].sort()[0]; r.mk = r.doi ? 'doi:' + r.doi : 't:' + normT(r.title) + '|' + r.year; });
+  S.records = kept; S.dups = dups; S.byId = Object.fromEntries(kept.map(r => [r.id, r]));
+  S.sig = hash(kept.map(r => r.id).sort().join('|'));
+}
+function hash(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16); }
+
+/* ================= 标准 ================= */
+function critList(text, prefix) {
+  let n = 0;
+  return String(text || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+    n++;
+    const m = l.match(/^((?:IC|EC|I|E)\s*\d+)[\s.:：、)）-]+(.*)$/i);
+    return m ? { code: m[1].replace(/\s+/g, '').toUpperCase(), text: m[2].trim() } : { code: prefix + n, text: l };
+  });
+}
+const IC = () => critList(S.crit.icText, 'IC');
+const EC = () => critList(S.crit.ecText, 'EC');
+const terms = s => String(s || '').split(/[,，;；\n]/).map(x => x.trim()).filter(x => x.length > 1);
+
+/* ================= 进度保存（每次改动都存，关掉页面再打开也在） ================= */
+function save() {
+  if (!S.sig) return;
+  DB.set('p:' + S.sig, { dec: S.dec, star: S.star, note: S.note, ai: S.ai, others: S.others, final: S.final, hist: S.hist.slice(-500),
+    cur: S.cur, usage: S.usage, mode: S.mode, at: Date.now() });
+}
+async function load() {
+  let p = await DB.get('p:' + S.sig);
+  if (!p) p = store.get('p:' + S.sig, null);   // 旧版本存在 localStorage 里的进度
+  Object.assign(S, { dec: {}, star: {}, note: {}, ai: {}, others: {}, final: {}, hist: [], cur: 0, usage: { in: 0, out: 0 }, mode: 'self', loadedSig: S.sig });
+  if (!p) return false;
+  Object.assign(S, { dec: p.dec || {}, star: p.star || {}, note: p.note || {}, ai: p.ai || {}, others: p.others || {}, final: p.final || {}, hist: p.hist || [],
+    cur: Math.min(p.cur || 0, S.records.length - 1), usage: p.usage || { in: 0, out: 0 } });
+  S.mode = p.mode === 'team' && hasTeam() ? 'team' : 'self';
+  return Object.keys(S.dec).length + Object.keys(S.ai).length + Object.keys(S.others).length > 0;
+}
+const saveFiles = () => DB.set('files', S.files.map(f => ({ name: f.name, text: f.text })));
+const saveCrit = () => store.set('crit', S.crit);
+const saveSettings = () => { store.set('settings', S.settings); if (S.settings.remember) store.set('key', KEY); else store.del('key'); };
+
+/* ================= 工具函数 ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function toast(msg) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
+function download(name, text, type) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+const radio = (name, val, label, on) => `<label class="rd"><input type="radio" name="${name}" value="${val}" ${on ? 'checked' : ''}> ${label}</label>`;
+const ICON = '<svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="10" fill="#8a5a3b"/><path d="M9 10h16l-6 7.5V24l-4 2v-8.5z" fill="#fff8ec"/><circle cx="24.5" cy="23.5" r="4.5" fill="#ffe27a" stroke="#8a5a3b" stroke-width="1.6"/><path d="M22.6 23.6l1.4 1.4 2.4-2.6" fill="none" stroke="#8a5a3b" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const stats = () => {
+  let k = 0, x = 0; for (const r of S.records) { const d = S.dec[r.id]; if (d?.d === 'keep') k++; else if (d?.d === 'excl') x++; }
+  return { n: S.records.length, k, x, todo: S.records.length - k - x, ai: S.records.filter(r => S.ai[r.id] && !S.ai[r.id].err).length };
+};
+const differs = id => { const d = S.dec[id], a = S.ai[id]; if (!d || !a || a.err) return false; return (d.d === 'excl') !== (a.decision === 'exclude'); };
+
+/* ================= 多人筛选：一致性和分歧 ================= */
+const hasTeam = () => multi() && Object.keys(S.others).length > 0;
+const team = () => S.mode === 'team' && hasTeam();
+const reviewers = () => [{ rid: myRid(), me: true, dec: S.dec, note: S.note },
+  ...Object.entries(S.others).map(([rid, o]) => ({ rid, dec: o.dec || {}, note: o.note || {} }))];
+function status(id) {        // agree：每个人都筛了且一样；conflict：至少两个人判得不一样；partial：还有人没筛
+  const R = reviewers(); const ds = R.map(x => x.dec[id]?.d).filter(Boolean);
+  if (ds.length >= 2 && new Set(ds).size > 1) return 'conflict';
+  if (ds.length === R.length && ds.length) return 'agree';
+  return 'partial';
+}
+function finalOf(id) {
+  if (S.final[id]) return S.final[id];
+  if (status(id) !== 'agree') return null;
+  const R = reviewers();
+  return { d: R[0].dec[id].d, ec: R.map(x => x.dec[id]?.ec).find(Boolean) || '', auto: true };
+}
+const decOf = id => (hasTeam() ? finalOf(id) : S.dec[id]);
+function teamStats() {
+  let conf = 0, res = 0, agree = 0, part = 0, fk = 0, fx = 0;
+  for (const r of S.records) {
+    const st = status(r.id);
+    if (st === 'conflict') { conf++; if (S.final[r.id]) res++; } else if (st === 'agree') agree++; else part++;
+    const f = finalOf(r.id); if (f?.d === 'keep') fk++; else if (f?.d === 'excl') fx++;
+  }
+  return { n: S.records.length, conf, res, agree, part, fk, fx };
+}
+function cohen(a, b) {
+  const ids = S.records.map(r => r.id).filter(id => a[id] && b[id]); const n = ids.length; if (!n) return null;
+  let ag = 0, ak = 0, bk = 0, kx = 0, xk = 0;
+  ids.forEach(id => { const x = a[id].d, y = b[id].d; if (x === y) ag++; if (x === 'keep') ak++; if (y === 'keep') bk++; if (x === 'keep' && y === 'excl') kx++; if (x === 'excl' && y === 'keep') xk++; });
+  const po = ag / n, pe = (ak / n) * (bk / n) + (1 - ak / n) * (1 - bk / n);
+  return { n, ag, po, k: pe >= 1 ? 1 : (po - pe) / (1 - pe), kx, xk };
+}
+function fleiss(R) {
+  const ids = S.records.map(r => r.id).filter(id => R.every(x => x.dec[id])); const N = ids.length, m = R.length; if (!N) return null;
+  let P = 0, keepTot = 0, uni = 0;
+  ids.forEach(id => { const k = R.filter(x => x.dec[id].d === 'keep').length, x = m - k; keepTot += k; P += (k * k + x * x - m) / (m * (m - 1)); if (!k || !x) uni++; });
+  P /= N; const pk = keepTot / (N * m), pe = pk * pk + (1 - pk) * (1 - pk);
+  return { N, uni, k: pe >= 1 ? 1 : (P - pe) / (1 - pe) };
+}
+// 写进论文的一句话：几个人、一致率、kappa、分歧多少、怎么解决的
+function teamReport() {
+  const R = reviewers(); if (R.length < 2) return '';
+  const zh = LANG === 'zh', ts = teamStats(), f2 = v => v.toFixed(2), pc = v => (100 * v).toFixed(1);
+  const names = R.map(x => x.rid).join(zh ? '、' : ', '), done = ts.conf === ts.res;
+  if (R.length === 2) {
+    const c = cohen(R[0].dec, R[1].dec); if (!c) return '';
+    const [a, b] = [R[0].rid, R[1].rid];
+    return zh
+      ? `两位审阅人（${names}）独立筛选了全部 ${ts.n} 条记录。两人都筛过的 ${c.n} 条中，判断一致 ${c.ag} 条（${pc(c.po)}%，Cohen's κ = ${f2(c.k)}）；有分歧 ${c.n - c.ag} 条（${a} 保留、${b} 排除 ${c.kx} 条；${a} 排除、${b} 保留 ${c.xk} 条），${done ? '全部经讨论统一。' : `已经讨论统一 ${ts.res} 条。`}`
+      : `Two reviewers (${names}) independently screened all ${ts.n} records. Of the ${c.n} records both screened, they agreed on ${c.ag} (${pc(c.po)}%, Cohen's κ = ${f2(c.k)}). The ${c.n - c.ag} disagreements (${a} keep / ${b} exclude: ${c.kx}; ${a} exclude / ${b} keep: ${c.xk}) ${done ? 'were all resolved by discussion.' : `are being resolved by discussion (${ts.res} so far).`}`;
+  }
+  const fl = fleiss(R); if (!fl) return '';
+  const pairs = [];
+  for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length; j++) { const c = cohen(R[i].dec, R[j].dec); if (c) pairs.push(`${R[i].rid}–${R[j].rid} ${f2(c.k)}`); }
+  return zh
+    ? `${R.length} 位审阅人（${names}）独立筛选了全部 ${ts.n} 条记录。所有人都筛过的 ${fl.N} 条中，全体一致 ${fl.uni} 条（${pc(fl.uni / fl.N)}%，Fleiss' κ = ${f2(fl.k)}）；两两之间的 Cohen's κ：${pairs.join('；')}。有分歧的 ${ts.conf} 条，${done ? '全部经讨论统一。' : `已经讨论统一 ${ts.res} 条。`}`
+    : `${R.length} reviewers (${names}) independently screened all ${ts.n} records. Of the ${fl.N} records all screened, all agreed on ${fl.uni} (${pc(fl.uni / fl.N)}%, Fleiss' κ = ${f2(fl.k)}); pairwise Cohen's κ: ${pairs.join('; ')}. The ${ts.conf} disagreements ${done ? 'were all resolved by discussion.' : `are being resolved by discussion (${ts.res} so far).`}`;
+}
+
+/* ================= 高亮 ================= */
+const fold = s => s.toLowerCase().replace(/[‘’′]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-');
+function findQuote(text, q) {
+  const T = fold(text); let Q = fold(String(q || '').trim()).replace(/^["'\s.…]+|["'\s.…]+$/g, '');
+  if (Q.length < 3) return null;
+  let i = T.indexOf(Q); if (i >= 0) return [i, i + Q.length];
+  const w = Q.split(/\s+/);
+  for (const len of [10, 7, 5]) {
+    if (w.length <= len) continue;
+    const head = w.slice(0, len).join(' '); i = T.indexOf(head);
+    if (i >= 0) { const tail = w.slice(-3).join(' '); const e = T.indexOf(tail, i); return [i, e > i && e - i < Q.length * 1.6 ? e + tail.length : i + head.length]; }
+  }
+  return null;
+}
+function marked(text, quotes, withTerms) {
+  if (!text) return '';
+  const n = text.length; const ev = new Int8Array(n); const tk = new Int8Array(n);
+  (quotes || []).forEach((q, qi) => { const m = findQuote(text, q); if (m) for (let i = m[0]; i < m[1]; i++) ev[i] = qi + 1; });
+  if (withTerms) {
+    const mark = (list, v) => list.forEach(w => {
+      const re = new RegExp('(^|[^A-Za-z0-9])(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?=[^A-Za-z0-9]|$)', 'gi'); let m;
+      while ((m = re.exec(text))) { const s = m.index + m[1].length; for (let i = s; i < s + m[2].length; i++) tk[i] = v; }
+    });
+    mark(terms(S.crit.keep), 1); mark(terms(S.crit.excl), 2);
+  }
+  let out = '', i = 0;
+  while (i < n) {
+    let j = i; while (j < n && ev[j] === ev[i] && tk[j] === tk[i]) j++;
+    let seg = esc(text.slice(i, j));
+    if (tk[i]) seg = `<span class="${tk[i] === 1 ? 'hk' : 'hx'}">${seg}</span>`;
+    if (ev[i]) seg = `<mark class="ev" data-q="${ev[i]}">${seg}</mark>`;
+    out += seg; i = j;
+  }
+  return out;
+}
+
+/* ================= 开始页 ================= */
+function teamControls(where) {      // 开始页和设置页都用：几个人筛、我的编号
+  const nm = 'team_' + where;
+  return `<div class="teamrow"><span class="lab">${t('teamQ')}</span>${radio(nm, 'solo', t('teamSolo'), !multi())}${radio(nm, 'multi', t('teamMulti'), multi())}
+    ${multi() ? `<label class="rd">${t('ridLab')} <input class="in" data-ridinput="1" placeholder="${esc(t('ridPh'))}" value="${esc(S.settings.rid)}"></label>` : ''}</div>
+    <div class="hint">${t('teamHint')}${multi() ? ' ' + t('teamHint2') : ''}</div>`;
+}
+function renderSetup() {
+  const st = S.records.length, s = stats(), done = s.k + s.x;
+  const label = !st ? t('needFiles') : (S.loadedSig === S.sig && done ? t('continueBtn', done, st) : t('startBtn', st));
+  $('#app').innerHTML = `
+  <div class="setup">
+    <div class="hero">${ICON.replace('34', '54').replace('34', '54')}<h1>${t('appName')}</h1><p>${t('heroP')}</p>
+      <div class="herobtns"><button class="ghost" data-act="settings">⚙ ${t('btnSettings')}</button><button class="ghost" data-act="guide">${t('btnGuide')}</button><button class="ghost" data-act="lang">${t('langBtn')}</button></div></div>
+    <div class="steps">
+      <section class="step">
+        <h2><span class="num">1</span>${t('s1')}</h2><p>${t('s1p')}</p>
+        <div class="drop" id="drop"><span>⬆︎ ${t('dropBoth')}</span><div class="pickrow">${pickButtons(true)}</div></div>
+        ${fileListHTML()}
+      </section>
+      <section class="step">
+        <h2><span class="num">2</span>${t('s2')}</h2><p>${t('s2p')}</p>
+        ${critForm()}
+      </section>
+      <section class="step wide">
+        <div class="left"><h2><span class="num">3</span>${t('s3')}</h2>
+          ${teamControls('s')}
+          <label class="rd"><input type="checkbox" id="useAI" ${aiOn() ? 'checked' : ''}> ${t('useAI')}<span class="hint" style="margin-left:4px">${t('useAIHint')}</span></label>
+          <p class="hint" style="margin:0">${t('s3p')}</p></div>
+        <button class="primary" data-act="start" ${st ? '' : 'disabled'}>${label}</button>
+      </section>
+    </div>
+    <div class="foot">${t('footer')}</div>
+  </div>`;
+  $('#useAI').onchange = e => { setAI(e.target.checked); if (e.target.checked && !KEY.trim()) { S.setTab = 'api'; openModal('settings'); } };
+  const drop = $('#drop');
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+  drop.ondragleave = () => drop.classList.remove('over');
+  drop.ondrop = async e => { e.preventDefault(); drop.classList.remove('over'); addFiles(await filesFromDrop(e.dataTransfer)); };
+  bindCritForm();
+}
+function critForm() {
+  return `<div class="lab2"><span class="ic">${t('icLab')}</span><button class="lnk" data-act="example">${t('fillEx')}</button></div>
+    <textarea class="ta" id="icText" placeholder="${esc(t('icPh'))}">${esc(S.crit.icText)}</textarea>
+    <div class="lab2"><span class="ec">${t('ecLab')}</span></div>
+    <textarea class="ta" id="ecText" style="min-height:130px" placeholder="${esc(t('ecPh'))}">${esc(S.crit.ecText)}</textarea>
+    <details class="more" id="hlMore" ${S.crit.keep || S.crit.excl ? 'open' : ''}><summary>${t('hlLab')}</summary>
+    <div class="two"><input class="in" id="hlKeep" placeholder="${esc(t('hlKeep'))}" value="${esc(S.crit.keep)}"><input class="in" id="hlExcl" placeholder="${esc(t('hlExcl'))}" value="${esc(S.crit.excl)}"></div>
+    <div class="hint" style="margin-top:6px"><span class="hk">${LANG === 'zh' ? '绿线' : 'green'}</span> / <span class="hx">${LANG === 'zh' ? '红线' : 'red'}</span> · ${t('hlHint')}</div></details>`;
+}
+function bindCritForm() {
+  const sync = () => { S.crit = { icText: $('#icText').value, ecText: $('#ecText').value, keep: $('#hlKeep').value, excl: $('#hlExcl').value }; saveCrit(); };
+  ['#icText', '#ecText', '#hlKeep', '#hlExcl'].forEach(s => { $(s).oninput = sync; });
+}
+const pickButtons = withId => `<label class="ghost pick">📄 ${t('pickFiles')}<input type="file" class="hidden" ${withId ? 'id="fileIn"' : ''} data-pick="files" multiple accept=".bib,.bibtex,.txt"></label>
+  <label class="ghost pick">📁 ${t('pickDir')}<input type="file" class="hidden" ${withId ? 'id="dirIn"' : ''} data-pick="dir" webkitdirectory multiple></label>`;
+function fileListHTML() {
+  if (!S.files.length) return '';
+  const tot = S.files.reduce((a, f) => a + f.recs.length, 0);
+  return `<div class="files">${S.files.map(f => `<div><span title="${esc(f.name)}">${esc(f.name)}</span><span>${f.recs.length} ${t('recs')}</span></div>`).join('')}
+    <div class="sum"><span>${t('total')}</span><span>${tot} ${t('recs')}</span></div>
+    <div><span>${t('dupFound', S.dups.length, S.records.length)}</span>${S.dups.length ? `<button class="lnk" data-act="dups">${t('viewDups')}</button>` : ''}</div>
+    <div style="border:0"><button class="lnk" data-act="clearFiles">${t('clearFiles')}</button></div></div>`;
+}
+// 拖进来的可能是文件，也可能是文件夹：文件夹逐层读出里面的文件
+async function filesFromDrop(dt) {
+  const entries = [...(dt.items || [])].map(i => (i.webkitGetAsEntry ? i.webkitGetAsEntry() : null)).filter(Boolean);
+  if (!entries.length) return [...dt.files];
+  const out = [];
+  const walk = async (entry, path) => {
+    if (entry.isFile) { const f = await new Promise((res, rej) => entry.file(res, rej)); out.push({ file: f, path: path + f.name }); return; }
+    if (!entry.isDirectory) return;
+    const reader = entry.createReader();
+    for (;;) {
+      const batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+      if (!batch.length) break;
+      for (const e of batch) await walk(e, path + entry.name + '/');
+    }
+  };
+  for (const e of entries) await walk(e, '');
+  return out;
+}
+async function addFiles(list, fromDir) {
+  let n = 0;
+  for (const it of list) {
+    const f = it.file || it, name = it.path || f.webkitRelativePath || f.name;
+    if (!((fromDir || it.path) ? /\.(bib|bibtex)$/i : /\.(bib|bibtex|txt)$/i).test(f.name)) continue;
+    n++;
+    const text = await f.text(), recs = parseBib(text, name);
+    if (!recs.length) { toast(t('parseFail', name)); continue; }
+    S.files = S.files.filter(x => x.name !== name).concat([{ name, text, recs }]);
+  }
+  if (!n && list.length) toast(t('noBib'));
+  await afterFilesChanged();
+}
+// 记录集合变了（加了或删了文件）：已经做过的判断按记录对上，接着用
+function carryOver(old) {
+  const map = {}; S.records.forEach(r => r.uids.forEach(u => { map[u] = r.id; }));
+  const mv = obj => { const o = {}; for (const [k, v] of Object.entries(obj || {})) if (map[k] && !(map[k] in o)) o[map[k]] = v; return o; };
+  ['dec', 'star', 'note', 'ai', 'final'].forEach(k => { S[k] = Object.assign({}, S[k], mv(old[k])); });   // 内存里的是最新的
+  for (const [rid, o] of Object.entries(old.others || {})) S.others[rid] = { ...o, dec: Object.assign({}, S.others[rid]?.dec, mv(o.dec)), note: Object.assign({}, S.others[rid]?.note, mv(o.note)) };
+}
+async function afterFilesChanged() {
+  const old = { dec: S.dec, star: S.star, note: S.note, ai: S.ai, final: S.final, others: S.others };
+  rebuild(); saveFiles();
+  if (!S.records.length) { S.view = 'setup'; store.set('view', 'setup'); renderSetup(); if (modalKind === 'settings') openModal('settings'); return; }
+  await load(); carryOver(old); save();
+  if (S.view === 'main') renderMain(); else renderSetup();
+  if (modalKind === 'settings') openModal('settings');
+}
+
+/* ================= 筛选页 ================= */
+function visible() {
+  const q = S.q.trim().toLowerCase();
+  return S.records.map((r, i) => [r, i]).filter(([r]) => {
+    if (team()) {
+      const st = status(r.id);
+      if (S.filter === 'unres' && !(st === 'conflict' && !S.final[r.id])) return false;
+      if (S.filter === 'conf' && st !== 'conflict') return false;
+      if (S.filter === 'agree' && st !== 'agree') return false;
+      if (S.filter === 'part' && st !== 'partial') return false;
+    } else {
+      const d = S.dec[r.id]?.d;
+      if (S.filter === 'todo' && d) return false;
+      if (S.filter === 'keep' && d !== 'keep') return false;
+      if (S.filter === 'excl' && d !== 'excl') return false;
+      if (S.filter === 'star' && !S.star[r.id]) return false;
+      if (S.filter === 'diff' && aiOn() && !differs(r.id)) return false;
+    }
+    if (aiOn() && S.aiFilter !== 'any') { const a = S.ai[r.id]; if (!a || a.err || a.decision !== S.aiFilter) return false; }
+    if (q && !(r.title + ' ' + r.abstract + ' ' + r.keywords.join(' ')).toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+function renderMain() {
+  $('#app').innerHTML = `
+  <div class="shell">
+  <header class="top">
+    <div class="brand">${ICON}<b>${t('appName')}</b>${multi() ? `<span class="ridchip" title="${esc(t('ridLab'))}">${esc(myRid())}</span>` : ''}</div>
+    ${hasTeam() ? `<div class="seg mini"><button data-mode="self" class="${team() ? '' : 'on'}">${t('modeSelf')}</button><button data-mode="team" class="${team() ? 'on' : ''}">${t('modeTeam')}</button></div>` : ''}
+    <div class="prog" id="prog"></div>
+    <div class="tools">
+      ${aiOn() ? `<button class="tb ai" id="aiBtn" data-act="ai">✦ ${t('btnAI')}</button>` : ''}
+      ${multi() ? `<button class="tb" data-act="team">${t('btnTeam')}</button>` : ''}
+      <button class="tb" data-act="export">${t('btnExport')}</button>
+      <div class="menu-wrap"><button class="tb icon" data-act="menu" title="${esc(t('more'))}" aria-label="${esc(t('more'))}">⋯</button>
+        <div class="menu hidden" id="menu">
+          <button data-act="settings">${t('btnSettings')}</button><button data-act="crit">${t('btnCrit')}</button><button data-act="guide">${t('btnGuide')}</button><button data-act="lang">${t('langSwitch')}</button>
+          <hr><button data-act="home">${t('menuHome')}</button>
+        </div></div>
+    </div>
+  </header>
+  <div class="main">
+    <aside class="list"><div class="tabs" id="tabs"></div>
+      <div class="finds"><input class="search" id="q" placeholder="${esc(t('searchPh'))}" value="${esc(S.q)}"><select class="search hidden" id="aif"></select></div>
+      <div class="items" id="items"></div></aside>
+    <main class="center" id="center"></main>
+    <aside class="side" id="side"></aside>
+  </div>
+  </div>`;
+  $('#q').oninput = e => { S.q = e.target.value; renderList(); };
+  $('#aif').onchange = e => { S.aiFilter = e.target.value; const vis = visible(); if (vis.length && !vis.some(([, i]) => i === S.cur)) S.cur = vis[0][1]; renderList(); renderCard(); renderSide(); };
+  renderProg(); renderList(); renderCard(); renderSide();
+}
+function renderProg() {
+  const el = $('#prog'); if (!el) return;
+  if (team()) {
+    const ts = teamStats(), w = ts.conf ? (100 * ts.res / ts.conf).toFixed(2) + '%' : '100%';
+    el.innerHTML = `<div class="nums"><span>${t('teamProg', `<b style="color:var(--ink)">${ts.res}</b>`, ts.conf)}</span><span>${t('finalN', ts.fk, ts.fx)}</span></div>
+      <div class="bar" style="background:var(--unsure-soft)"><i class="k" style="width:${w};background:var(--unsure)"></i></div>`;
+  } else {
+    const s = stats();
+    const pct = v => (s.n ? (100 * v / s.n) : 0).toFixed(2) + '%';
+    const done = s.k + s.x;
+    el.innerHTML = `<div class="nums"><span>${t('screened')} <b style="color:var(--ink)">${done}</b> / ${s.n}</span><span>${s.n ? Math.floor(100 * done / s.n) : 0}%</span></div>
+      <div class="bar" title="${esc(`${t('kept')} ${s.k} · ${t('excluded')} ${s.x} · ${t('todo')} ${s.todo}`)}"><i class="k" style="width:${pct(s.k)}"></i><i class="x" style="width:${pct(s.x)}"></i></div>
+      ${AI.running ? `<div class="aibar"><i style="width:${(100 * AI.done / Math.max(1, AI.total)).toFixed(1)}%"></i></div>` : ''}`;
+  }
+  const b = $('#aiBtn'); if (b) { b.classList.toggle('on', AI.running); b.innerHTML = '✦ ' + (AI.running ? t('running', AI.done, AI.total) : t('btnAI')); }
+}
+function renderList() {
+  let tabs;
+  if (team()) {
+    const ts = teamStats();
+    tabs = [['unres', t('tUnres'), ts.conf - ts.res], ['conf', t('tConf'), ts.conf], ['agree', t('tAgree'), ts.agree], ['part', t('tPart'), ts.part], ['all', t('tAll'), ts.n]]
+      .filter(([k, , n]) => k === 'unres' || k === 'all' || n > 0 || S.filter === k);
+  } else {
+    const s = stats();
+    const nDiff = S.records.filter(r => differs(r.id)).length, nStar = Object.values(S.star).filter(Boolean).length;
+    tabs = [['all', t('tAll'), s.n], ['todo', t('tTodo'), s.todo], ['keep', t('tKeep'), s.k], ['excl', t('tExcl'), s.x], ['star', t('tStar'), nStar], ...(aiOn() ? [['diff', t('tDiff'), nDiff]] : [])]
+      .filter(([k, , n]) => k === 'all' || k === 'todo' || n > 0 || S.filter === k);
+  }
+  $('#tabs').innerHTML = tabs.map(([k, l, n]) => `<button class="tab ${S.filter === k ? 'on' : ''}" data-filter="${k}">${l}<span class="n">${n}</span></button>`).join('');
+  const sel = $('#aif'), nAI = S.records.filter(r => S.ai[r.id] && !S.ai[r.id].err).length;
+  sel.classList.toggle('hidden', !aiOn() || !nAI);
+  if (aiOn() && nAI) {
+    const cnt = k => S.records.filter(r => S.ai[r.id] && !S.ai[r.id].err && S.ai[r.id].decision === k).length;
+    sel.innerHTML = [['any', t('aiAny')], ['exclude', t('vExclude')], ['include', t('vInclude')], ['unsure', t('aiUnsureShort')]]
+      .map(([k, l]) => `<option value="${k}" ${S.aiFilter === k ? 'selected' : ''}>✦ ${l}${k === 'any' ? '' : ' · ' + cnt(k)}</option>`).join('');
+  }
+  const vis = visible();
+  $('#items').innerHTML = vis.length ? vis.map(([r, i]) => {
+    let dc;
+    if (team()) { const f = finalOf(r.id); dc = f ? (f.d === 'keep' ? 'k' : 'x') : status(r.id) === 'conflict' ? 'c' : 't'; }
+    else { const d = S.dec[r.id]?.d; dc = d === 'keep' ? 'k' : d === 'excl' ? 'x' : 't'; }
+    return `<div class="it ${i === S.cur ? 'cur' : ''}" data-go="${i}" title="${esc(r.title)}"><span class="i">${i + 1}</span><span class="tt">${S.star[r.id] ? '★ ' : ''}${esc(r.title)}</span><i class="dot ${dc}"></i></div>`;
+  }).join('') : `<div class="empty-list">${t('noItems')}</div>`;
+  const cur = $('#items .cur'); if (cur) cur.scrollIntoView({ block: 'nearest' });
+}
+function renderCard() {
+  const r = S.records[S.cur]; if (!r) return;
+  const a = S.ai[r.id];
+  const d = team() ? finalOf(r.id) : S.dec[r.id];
+  const quotes = aiOn() && a && !a.err ? a.evidence : [];
+  const ecs = EC();
+  const sugEC = aiOn() && a && !a.err && a.decision === 'exclude' ? a.criterion : '';
+  const au = r.authors.length > 3 ? r.authors.slice(0, 3).join(', ') + ' et al.' : r.authors.join(', ');
+  const src = r.files.map(f => f.replace(/\.(bib|bibtex|txt)$/i, '')).join(' + ');
+  const showNote = S.noteOpen === r.id || S.note[r.id];
+  let stamp = '';
+  if (team()) {
+    if (d) stamp = `<span class="stamp ${d.d === 'keep' ? 'k' : 'x'}">${d.auto ? t('agreedStamp') + ' · ' : ''}${d.d === 'keep' ? '✓ ' + t('finalK') : '✕ ' + t('finalX') + (d.ec ? ' · ' + esc(d.ec) : '')}</span>`;
+    else if (status(r.id) === 'conflict') stamp = `<span class="stamp c">⚠︎ ${t('conflictStamp')}</span>`;
+  } else if (d) stamp = `<span class="stamp ${d.d === 'keep' ? 'k' : 'x'}">${d.d === 'keep' ? '✓ ' + t('stampK') : '✕ ' + t('stampX') + (d.ec ? ' · ' + esc(d.ec) : '')}</span>`;
+  $('#center').innerHTML = `
+  <div class="paper">
+    <div class="meta"><span title="${esc(r.uids.join('\n'))}">#${S.cur + 1} · ${esc(r.year || '—')} · ${esc(src)}</span>
+      ${r.abstract ? '' : `<span class="chip warn">${t('noAbsChip')}</span>`}${stamp}
+    </div>
+    <h1>${marked(r.title, quotes, true)}</h1>
+    <div class="byline" title="${esc(r.authors.join(', ') + (r.venue ? ' · ' + r.venue : ''))}">${esc(au)}${r.venue ? ` · <i>${esc(r.venue)}</i>` : ''}</div>
+    ${r.keywords.length ? `<div class="kwl">${r.keywords.slice(0, 10).map(k => marked(k, [], true)).join('<span class="sep"> · </span>')}</div>` : ''}
+    <div class="abs ${r.abstract ? '' : 'none'}">${r.abstract ? marked(r.abstract, quotes, true) : esc(t('noAbstract'))}</div>
+    ${showNote ? `<textarea class="note" id="note" rows="2" placeholder="${esc(t('notePh'))}">${esc(S.note[r.id] || '')}</textarea>`
+      : `<button class="lnk addnote" data-act="noteOpen">＋ ${t('addNote')}</button>`}
+  </div>
+  <div class="decide">
+    <div class="row">
+      <button class="big x ${d?.d === 'excl' ? 'sel' : ''}" data-act="excl">✕ ${t('exclBtn')} <kbd>←</kbd></button>
+      <button class="big k ${d?.d === 'keep' ? 'sel' : ''}" data-act="keep">✓ ${t('keepBtn')} <kbd>→</kbd></button>
+    </div>
+    <div class="minor">
+      ${ecs.length ? `<div class="reasons"><span>${t('exclReason')}</span>${ecs.slice(0, 9).map((e, i) =>
+        `<button class="rc ${d?.ec === e.code ? 'sel' : ''} ${sugEC === e.code ? 'sug' : ''}" data-ec="${esc(e.code)}" title="${esc(e.code + ' ' + e.text)}${sugEC === e.code ? ' (AI)' : ''}"><i>${i + 1}</i>${esc(e.code)}</button>`).join('')}</div>` : '<span></span>'}
+      <div class="navs">
+        <button class="ib" data-act="prev" title="${esc(t('prev'))} (↑)">↑</button>
+        <button class="ib" data-act="next" title="${esc(t('next'))} (↓)">↓</button>
+        <button class="ib ${S.star[r.id] ? 'on' : ''}" data-act="star" title="${esc(t('star'))} (S)">${S.star[r.id] ? '★' : '☆'}</button>
+        <button class="ib" data-act="undo" title="${esc(t('undo'))} (Z)" ${S.hist.length ? '' : 'disabled'}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M6 3.5 2.5 7 6 10.5"/><path d="M2.5 7H10a3.5 3.5 0 0 1 0 7H8"/></svg></button>
+      </div>
+    </div>
+  </div>`;
+  const note = $('#note');
+  if (note) {
+    note.oninput = e => { const v = e.target.value; if (v) S.note[r.id] = v; else delete S.note[r.id]; save(); };
+    if (S.noteOpen === r.id && !S.note[r.id]) note.focus();
+  }
+  $('#center').scrollTop = 0;
+}
+function renderSide() {
+  const r = S.records[S.cur]; if (!r) return;
+  const a = S.ai[r.id], d = S.dec[r.id];
+  let ai = '';
+  if (aiOn()) {
+    if (!a) {
+      ai = `<p class="mutedp">${t('aiNone')}</p>${KEY && IC().length + EC().length
+        ? `<button class="ghost sm" data-act="aiOne">✦ ${t('aiOne')}</button>` : `<button class="ghost sm" data-act="ai">✦ ${t('aiSetup')}</button>`}`;
+    } else if (a.err) {
+      ai = `<p class="mutedp" style="color:var(--excl)">${t('aiErr')}${esc(a.err)}</p><button class="ghost sm" data-act="aiOne">${t('retry')}</button>`;
+    } else {
+      const v = a.decision === 'exclude' ? t('vExclude') : a.decision === 'include' ? t('vInclude') : t('vUnsure');
+      const cdef = [...IC(), ...EC()].find(c => c.code === a.criterion);
+      const evs = (a.evidence || []).map((q, i) => {
+        const found = findQuote(r.title, q) || findQuote(r.abstract, q);
+        return `<li class="${found ? '' : 'miss'}" data-ev="${i + 1}" title="${found ? '' : esc(t('evMiss'))}">“${esc(q)}”</li>`;
+      }).join('');
+      ai = `<div class="verdict v-${a.decision}"><span class="tag">${v}</span>${a.criterion ? `<span class="code">${esc(a.criterion)}</span>` : ''}</div>
+        ${cdef ? `<div class="critline">${esc(cdef.text)}</div>` : ''}
+        <p class="why">${esc(a.reason)}</p>
+        ${evs ? `<ul class="evl">${evs}</ul>` : ''}
+        ${d && !team() ? `<div class="agree ${differs(r.id) ? 'no' : 'yes'}">${differs(r.id) ? '⚠︎ ' + t('agreeNo') : '✓ ' + t('agreeYes')}</div>` : ''}`;
+    }
+  }
+  let rv = '';
+  if (team()) {
+    const lab = x => x ? `<span class="stamp ${x.d === 'keep' ? 'k' : 'x'}">${x.d === 'keep' ? t('kept') : t('excluded')}${x.ec ? ' · ' + esc(x.ec) : ''}</span>` : `<span class="hint">${t('notYet')}</span>`;
+    const f = finalOf(r.id);
+    rv = reviewers().map(x => `<div class="rv"><b>${esc(x.rid)}${x.me ? ` <span class="hint">(${t('me')})</span>` : ''}</b>${lab(x.dec[r.id])}${x.note[r.id] ? `<div class="hint">${esc(x.note[r.id])}</div>` : ''}</div>`).join('')
+      + `<div class="rv"><b>${t('finalLab')}</b>${f ? lab(f) : `<span class="stamp c">${t('conflictStamp')}</span>`}</div>`;
+  }
+  const ic = IC(), ec = EC();
+  const crit = (list, cls) => list.length ? `<ul class="crit ${cls}">${list.map(c => `<li><span class="c">${esc(c.code)}</span><span>${esc(c.text)}</span></li>`).join('')}</ul>` : '';
+  $('#side').innerHTML = `
+    ${rv ? `<div class="box"><h3><span>${t('rvBox')}</span></h3>${rv}</div>` : ''}
+    ${aiOn() ? `<div class="box aibox"><h3><span title="${esc(a && !a.err && a.model ? a.model : '')}">✦ ${t('aiTitle')}</span></h3>${ai}</div>` : ''}
+    <details class="box critbox" ${(S.critOpen === null ? !aiOn() && !team() : S.critOpen) ? 'open' : ''}><summary><h3>${t('critTitle')}</h3><span class="hint">${ic.length + ec.length ? t('critCount', ic.length, ec.length) : t('critEmpty')}</span></summary>
+      ${crit(ic, 'ic')}<div style="height:8px"></div>${crit(ec, 'ec')}
+      <div class="actions" style="justify-content:space-between;margin-top:10px"><span class="hint">${ec.length ? t('keysHint') : ''}</span><button class="lnk" data-act="crit">${t('editCrit')}</button></div>
+    </details>`;
+  // 只记用户自己点开或收起的状态（details 一渲染出来就会触发 toggle，不能用它）
+  const det = $('#side .critbox');
+  det.querySelector('summary').onclick = () => setTimeout(() => { S.critOpen = det.open; store.set('critOpen', det.open); }, 0);
+}
+function renderAll() { if (S.view === 'main') { renderProg(); renderList(); renderCard(); renderSide(); } }
+
+/* ================= 判断 ================= */
+const pending = id => (team() ? status(id) === 'conflict' && !S.final[id] : !S.dec[id]);
+function nextTodo(from) {
+  const n = S.records.length;
+  for (let k = 1; k <= n; k++) { const i = (from + k) % n; if (pending(S.records[i].id)) return i; }
+  return Math.min(from + 1, n - 1);
+}
+function decide(kind, ec) {
+  const r = S.records[S.cur]; if (!r) return;
+  const tm = team(), box = tm ? S.final : S.dec;      // 统一结果模式下，按钮定的是最终结果
+  const prev = box[r.id] ? { ...box[r.id] } : null;
+  if (kind === 'excl' && !ec && prev?.d === 'excl') ec = prev.ec;   // 改判时保留原来的理由
+  box[r.id] = { d: kind, ec: kind === 'excl' ? (ec || '') : '', at: Date.now() };
+  S.hist.push({ id: r.id, prev, f: tm ? 1 : 0 });
+  save();
+  if (S.filter === 'all') S.cur = nextTodo(S.cur);
+  else { const vis = visible(); const nx = vis.find(([, i]) => i > S.cur) || vis[0]; if (nx) S.cur = nx[1]; }
+  renderAll();
+  if (!prev && (tm ? !teamStats().conf || teamStats().conf === teamStats().res : !stats().todo)) toast(tm ? t('teamDone') : t('allDone'));
+}
+function undo() {
+  const h = S.hist.pop(); if (!h) return;
+  const box = h.f ? S.final : S.dec;
+  if (h.prev) box[h.id] = h.prev; else delete box[h.id];
+  const i = S.records.findIndex(r => r.id === h.id); if (i >= 0) S.cur = i;
+  save(); renderAll();
+}
+function go(delta) {
+  const vis = visible(); if (!vis.length) return;
+  let p = vis.findIndex(([, i]) => i === S.cur);
+  p = p < 0 ? 0 : Math.max(0, Math.min(vis.length - 1, p + delta));
+  S.cur = vis[p][1]; save(); renderCard(); renderSide(); renderList();
+}
+function setMode(m) {
+  S.mode = m === 'team' && hasTeam() ? 'team' : 'self';
+  S.filter = S.mode === 'team' ? 'unres' : 'all';
+  const vis = visible(); if (vis.length && !vis.some(([, i]) => i === S.cur)) S.cur = vis[0][1];
+  save(); renderMain();
+}
+function setMulti(on) {
+  S.settings.multi = on;
+  if (on && !String(S.settings.rid || '').trim()) S.settings.rid = 'R1';
+  if (!on) S.mode = 'self';
+  saveSettings();
+  if (S.view === 'main') renderMain(); else renderSetup();
+  if (modalKind) openModal(modalKind);
+}
+
+/* ================= AI 预审 ================= */
+const outLangName = () => { const s = S.settings; return s.outLang === 'en' ? 'English' : s.outLang === 'other' ? (s.outOther.trim() || 'English') : 'Simplified Chinese'; };
+const outLangLabel = () => { const s = S.settings; return s.outLang === 'en' ? 'English' : s.outLang === 'other' ? (s.outOther.trim() || t('other')) : '中文'; };
+function systemPrompt() {
+  const lang = outLangName();
+  const s = S.settings;
+  return [
+    'You are helping a researcher screen records for a scoping review at the title-and-abstract stage.',
+    'Judge ONLY from the title, keywords and abstract you are given. Do not assume anything that is not stated.',
+    '', 'Inclusion criteria:', ...IC().map(c => `${c.code}: ${c.text}`),
+    '', 'Exclusion criteria:', ...EC().map(c => `${c.code}: ${c.text}`),
+    ...(s.extra.trim() ? ['', 'Notes from the researcher:', s.extra.trim()] : []),
+    '', 'Choose one decision:',
+    '- "exclude": at least one exclusion criterion clearly applies, or the record clearly fails an inclusion criterion. Put the code of the single most direct criterion in "criterion".',
+    '- "include": the record appears to meet the inclusion criteria. Put the code of the main inclusion criterion it meets in "criterion".',
+    '- "unsure": the title and abstract do not give enough information to decide; the researcher will keep it for full-text reading. When in doubt, choose "unsure" rather than "exclude".',
+    '', `Write "reason" as one short sentence in ${lang}.`,
+    'In "evidence", copy 1 to 3 short phrases VERBATIM from the title or abstract (each under 25 words) that support your decision. Keep them in the original language of the abstract: do not translate or paraphrase them, even though the reason is in another language.',
+    'Reply with a JSON object only, in exactly this form:',
+    '{"decision": "include" | "exclude" | "unsure", "criterion": "EC1", "reason": "...", "evidence": ["...", "..."]}',
+  ].join('\n');
+}
+const userMsg = r => `Title: ${r.title}\nKeywords: ${r.keywords.join('; ') || '(none)'}\nAbstract: ${r.abstract || '(no abstract available)'}`;
+function parseAI(txt) {
+  let s = String(txt || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+  const a = s.indexOf('{'), b = s.lastIndexOf('}'); if (a >= 0 && b > a) s = s.slice(a, b + 1);
+  let o; try { o = JSON.parse(s); } catch (e) { throw new Error(t('errParse')); }
+  let d = String(o.decision || '').toLowerCase().trim(); if (!['include', 'exclude', 'unsure'].includes(d)) d = 'unsure';
+  const ev = (Array.isArray(o.evidence) ? o.evidence : [o.evidence]).filter(Boolean).map(String).slice(0, 4);
+  return { decision: d, criterion: String(o.criterion || '').replace(/\s+/g, '').toUpperCase().slice(0, 12), reason: String(o.reason || '').trim(), evidence: ev };
+}
+async function callAI(r, outer) {
+  const s = S.settings;
+  const url = s.base.trim().replace(/\/+$/, '') + '/chat/completions';
+  const body = { model: s.model.trim(), temperature: 0, max_tokens: s.think ? 4000 : 600, response_format: { type: 'json_object' },
+    messages: [{ role: 'system', content: systemPrompt() }, { role: 'user', content: userMsg(r) }] };
+  // DeepSeek 默认先“思考”再回答；筛摘要用不着，关掉更快更省。别家的接口不认这个参数，就不传
+  if (/deepseek/i.test(s.base)) body.thinking = { type: s.think ? 'enabled' : 'disabled' };
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (outer.aborted) throw new DOMException('stop', 'AbortError');
+    const ctrl = new AbortController(); const stop = () => ctrl.abort(); outer.addEventListener('abort', stop);
+    const timer = setTimeout(() => ctrl.abort(), 90000);
+    let res;
+    try { res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY.trim() }, body: JSON.stringify(body), signal: ctrl.signal }); }
+    catch (e) { if (outer.aborted) throw e; await sleep(1500 * (attempt + 1)); continue; }
+    finally { clearTimeout(timer); outer.removeEventListener('abort', stop); }
+    if (res.status === 429 || res.status >= 500) { await sleep(2500 * (attempt + 1)); continue; }
+    if (res.status === 400 && (body.response_format || body.thinking)) { delete body.response_format; delete body.thinking; continue; }
+    if (res.status === 401) throw new Error(t('err401'));
+    if (res.status === 402) throw new Error(t('err402'));
+    if (!res.ok) throw new Error(t('errHttp', res.status));
+    const data = await res.json();
+    const u = data.usage || {}; S.usage.in += u.prompt_tokens || 0; S.usage.out += u.completion_tokens || 0;
+    const content = data.choices?.[0]?.message?.content;
+    if (!String(content || '').trim() && attempt < 4) continue;   // JSON 模式偶尔返回空内容，再要一次
+    return Object.assign(parseAI(content), { model: data.model || s.model, at: Date.now() });
+  }
+  throw new Error(t('errRetry'));
+}
+function aiTargets(scope) {
+  return S.records.filter(r => scope === 'all' ? true : scope === 'unscreened' ? !S.dec[r.id] : !(S.ai[r.id] && !S.ai[r.id].err)).map(r => r.id);
+}
+async function runAI(ids) {
+  if (AI.running || !ids.length) return;
+  Object.assign(AI, { running: true, paused: false, queue: ids.slice(), done: 0, total: ids.length, fail: 0, ctrl: new AbortController() });
+  renderProg(); refreshAIModal();
+  const worker = async () => {
+    while (AI.running && !AI.paused && AI.queue.length) {
+      const id = AI.queue.shift(); const r = S.byId[id];
+      try { S.ai[id] = await callAI(r, AI.ctrl.signal); }
+      catch (e) {
+        if (AI.ctrl.signal.aborted) { AI.queue.unshift(id); break; }
+        S.ai[id] = { err: e.message }; AI.fail++;
+        if (/401|402/.test(e.message)) { AI.paused = true; toast(e.message); }
+      }
+      AI.done++; save(); renderProg(); refreshAIModal();
+      if (S.records[S.cur]?.id === id) { renderSide(); renderCard(); }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(8, +S.settings.conc || 4)) }, worker));
+  const finished = !AI.queue.length;
+  AI.running = false; save();
+  if (finished) toast(t('aiFinished', AI.done, AI.fail));
+  renderAll(); refreshAIModal();
+}
+function estimate(ids) {
+  const sys = systemPrompt().length;
+  let chars = 0; ids.forEach(id => { chars += sys + userMsg(S.byId[id]).length; });
+  const tin = Math.round(chars / 3.6), tout = ids.length * 90;
+  return { n: ids.length, tok: tin + tout, cost: (tin * S.settings.pin + tout * S.settings.pout) / 1e6 };
+}
+
+/* ================= 弹窗 ================= */
+let modalKind = '';
+function openModal(kind) { modalKind = kind; closeModalEl(); const m = document.createElement('div'); m.className = 'mask'; m.id = 'mask'; m.innerHTML = `<div class="modal" role="dialog">${modalHTML(kind)}</div>`; m.onclick = e => { if (e.target === m) closeModal(); }; document.body.appendChild(m); bindModal(kind); }
+function closeModalEl() { const m = $('#mask'); if (m) m.remove(); }
+function closeModal() { closeModalEl(); modalKind = ''; }
+function refreshAIModal() { if (modalKind !== 'ai') return; const m = $('#mask .modal'); if (!m) return; const st = $('#aiStatus'); if (st) st.innerHTML = aiStatusHTML(); }
+const head = (title, sub) => `<h2>${title}<button class="x" data-act="close" aria-label="close">×</button></h2>${sub ? `<p class="sub">${sub}</p>` : ''}`;
+function aiStatusHTML() {
+  const s = S.settings; const ids = aiTargets(s.scope); const e = estimate(ids);
+  const used = (S.usage.in * s.pin + S.usage.out * s.pout) / 1e6;
+  const failed = S.records.filter(r => S.ai[r.id]?.err).length;
+  const fmt = n => n >= 10000 ? (LANG === 'zh' ? (n / 10000).toFixed(1) + ' 万' : (n / 1000).toFixed(0) + 'k') : String(n);
+  const money = v => LANG === 'zh' ? v.toFixed(2) + ' ' + t('yuan') : '≈ ' + v.toFixed(2) + ' (CNY)';
+  return `<div class="est"><span>${t('estN')} <b>${e.n}</b></span><span>${t('estTok')} <b>${fmt(e.tok)}</b> ${t('tokens')}</span><span>${t('estCost')} <b>${money(e.cost)}</b></span>
+      ${S.usage.in ? `<span>${t('used')} <b>${fmt(S.usage.in + S.usage.out)}</b> ${t('tokens')} · ${money(used)}</span>` : ''}</div>
+    ${AI.running || AI.done ? `<div class="aibar" style="height:8px"><i style="width:${(100 * AI.done / Math.max(1, AI.total)).toFixed(1)}%"></i></div><div class="hint" style="margin-top:6px">${AI.running ? t('running', AI.done, AI.total) : t('aiFinished', AI.done, AI.fail)}</div>` : ''}
+    <div class="actions">
+      ${failed && !AI.running ? `<button class="ghost" data-act="aiRetry">${t('retryFailed', failed)}</button>` : ''}
+      ${AI.running ? `<button class="ghost" data-act="aiPause">${t('pause')}</button><button class="ghost" data-act="aiStop">${t('stop')}</button>`
+        : `<button class="ghost" data-act="aiOne">${t('testOne')}</button><button class="primary ai" data-act="aiStart" ${e.n ? '' : 'disabled'}>${AI.paused && AI.queue.length ? t('resume') : t('start')}</button>`}
+    </div>`;
+}
+function teamHTML() {
+  const R = reviewers(), ts = teamStats(), rep = teamReport();
+  const rows = R.map(x => `<div class="rvrow"><b>${esc(x.rid)}</b>${x.me ? `<span class="hint">（${t('me')}）</span>` : ''}<span class="hint">${t('screenedN', Object.keys(x.dec).filter(id => S.byId[id]).length)}</span>
+    ${x.me ? '' : `<button class="lnk" data-act="rmRv" data-rv="${esc(x.rid)}">${t('remove')}</button>`}</div>`).join('');
+  return head(t('teamTitle'), t('teamSub')) + `
+    <div class="ex-grid">
+      <div class="ex"><div><b>${t('exMine')}</b><span>${t('exMineD')}</span></div><button class="ghost" data-act="exMine">${t('download')}</button></div>
+      <div class="ex"><div><b>${t('impOthers')}</b><span>${t('impOthersD')}</span></div><label class="ghost" style="cursor:pointer">${t('impOthers')}<input type="file" id="impOthers" accept=".json" multiple class="hidden"></label></div>
+    </div>
+    <div class="lab2" style="margin-top:18px"><span>${t('reviewers')}</span></div><div>${rows}</div>
+    <div class="lab2" style="margin-top:18px"><span>${t('agreeTitle')}</span>${rep ? `<button class="lnk" data-act="copyReport">${t('copy')}</button>` : ''}</div>
+    ${rep ? `<pre class="prisma" id="reportTxt">${esc(rep)}</pre>
+      <div class="actions" style="justify-content:space-between"><button class="ghost" data-act="exCompare">${t('exCompare')}</button>
+        ${ts.conf ? `<button class="primary" data-act="startTeam">${ts.res === ts.conf ? t('allResolved') : t('startTeam', ts.conf - ts.res)}</button>` : ''}</div>
+      <p class="hint" style="margin-top:8px">${t('exCompareD')}</p>` : `<p class="mutedp">${t('agreeNone')}</p>`}`;
+}
+function modalHTML(kind) {
+  const s = S.settings;
+  if (kind === 'ai') return head('✦ ' + t('aiModal'), t('aiSub')) + `
+    ${KEY.trim() ? '' : `<div class="privacy" style="background:var(--unsure-soft);color:var(--unsure)">${t('aiNeedKey')} <button class="lnk" data-act="openApi">${t('goSettings')} →</button></div>`}
+    <div class="privacy">🔒 ${t('privacy')}</div>
+    <div class="aisum">${t('aiSummary', esc(s.model), esc(outLangLabel()))} · <button class="lnk" data-act="openApi">${t('change')}</button></div>
+    <div class="fld" style="max-width:320px"><label>${t('scopeLab')}</label><select class="in" id="scope">
+      <option value="todo" ${s.scope === 'todo' ? 'selected' : ''}>${t('scopeTodo')}</option><option value="unscreened" ${s.scope === 'unscreened' ? 'selected' : ''}>${t('scopeUnscreened')}</option><option value="all" ${s.scope === 'all' ? 'selected' : ''}>${t('scopeAll')}</option></select></div>
+    <div id="aiStatus">${aiStatusHTML()}</div>`;
+  if (kind === 'team') return teamHTML();
+  if (kind === 'settings') {
+    const tab = S.setTab || 'files';
+    const tabs = [['files', t('tabFiles')], ['team', t('tabTeam')], ['lang', t('tabLang')], ['api', t('tabApi')], ['help', t('tabHelp')]];
+    let body = '';
+    if (tab === 'files') body = `<p class="sub">${t('filesSub')}</p><div class="pickrow" style="justify-content:flex-start;margin:0 0 6px">${pickButtons(false)}</div>${fileListHTML()}`;
+    if (tab === 'team') body = teamControls('m');
+    if (tab === 'lang') body = `
+      <div class="fld"><label>${t('uiLang')}</label><div class="radios">${radio('ui', 'zh', '中文', LANG === 'zh')}${radio('ui', 'en', 'English', LANG === 'en')}</div></div>
+      <div class="fld" style="margin-top:18px"><label>${t('outLang')}</label><div class="radios">${radio('out', 'zh', '中文', s.outLang === 'zh')}${radio('out', 'en', 'English', s.outLang === 'en')}${radio('out', 'other', t('other'), s.outLang === 'other')}
+        <input class="in" id="outOther" style="max-width:250px" placeholder="${esc(t('otherPh'))}" value="${esc(s.outOther)}" ${s.outLang === 'other' ? '' : 'disabled'}></div>
+        <div class="hint" style="margin-top:8px">${t('outLangHint')}</div></div>`;
+    if (tab === 'api') body = `<div class="fld"><div class="radios">${radio('aimode', 'off', t('aiModeOff'), !aiOn())}${radio('aimode', 'on', t('aiModeOn'), aiOn())}</div></div>` + (!aiOn() ? `<p class="sub" style="margin-top:14px">${t('aiOffNote')}</p>` : `<p class="sub">${t('apiSub')} <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">${t('getKey')} ↗</a></p>
+      <div class="privacy">🔒 ${t('privacy')}</div>
+      <div class="fld"><label>${t('keyLab')}</label><input class="in" id="k" type="password" autocomplete="off" placeholder="${esc(t('keyPh'))}" value="${esc(KEY)}">
+        <label class="hint" style="display:flex;gap:6px;align-items:center;margin-top:6px;font-weight:400"><input type="checkbox" id="rem" ${s.remember ? 'checked' : ''}> ${t('remember')}</label></div>
+      <div class="two"><div class="fld"><label>${t('baseLab')}</label><input class="in" id="base" value="${esc(s.base)}"></div>
+        <div class="fld"><label>${t('modelLab')}</label><input class="in" id="model" value="${esc(s.model)}"></div></div>
+      <div class="hint" style="margin:-4px 0 12px">${t('modelHint')}</div>
+      <details class="more"><summary>${t('advanced')}</summary>
+        <div class="two"><div class="fld"><label>${t('concLab')}</label><input class="in" id="conc" type="number" min="1" max="8" value="${esc(s.conc)}"></div>
+          <div class="fld"><label>${t('priceLab')}</label><div class="two" style="gap:6px"><input class="in" id="pin" type="number" step="0.1" min="0" value="${esc(s.pin)}"><input class="in" id="pout" type="number" step="0.1" min="0" value="${esc(s.pout)}"></div></div></div>
+        <div class="hint" style="margin:-4px 0 12px">${t('priceHint')}</div>
+        <label class="rd" style="margin:0 0 12px"><input type="checkbox" id="think" ${s.think ? 'checked' : ''}> ${t('thinkLab')}</label>
+        <div class="fld"><label>${t('extraLab')}</label><textarea class="ta" id="extra" style="min-height:54px" placeholder="${esc(t('extraPh'))}">${esc(s.extra)}</textarea></div>
+        <details class="pp"><summary>${t('promptPrev')}</summary><pre id="pp"></pre></details>
+      </details>`);
+    if (tab === 'help') body = guideHTML();
+    return head('⚙ ' + t('setTitle')) + `<div class="seg">${tabs.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div><div class="pane">${body}</div>`;
+  }
+  if (kind === 'crit') return head(t('critModal'), t('critSub')) + critForm() + `<div class="actions"><button class="primary" data-act="close">${t('save')}</button></div>`;
+  if (kind === 'export') return head(t('exportTitle'), t('exportSub')) + `
+    <div class="ex-grid">
+      ${multi() ? `<div class="ex"><div><b>${t('exMine')}</b><span>${t('exMineD')}</span></div><button class="ghost" data-act="exMine">${t('download')}</button></div>` : ''}
+      ${hasTeam() ? `<div class="ex"><div><b>${t('exCompare')}</b><span>${t('exCompareD')}</span></div><button class="ghost" data-act="exCompare">${t('download')}</button></div>` : ''}
+      <div class="ex"><div><b>${t('exCsv')}</b><span>${t('exCsvD')}</span></div><button class="ghost" data-act="exCsv">${t('download')}</button></div>
+      <div class="ex"><div><b>${t('exBib')}</b><span>${hasTeam() ? t('exBibTeamD') : t('exBibD')}</span></div><button class="ghost" data-act="exBib">${t('download')}</button></div>
+      <div class="ex"><div><b>${t('exJson')}</b><span>${t('exJsonD')}</span></div><span style="display:flex;gap:8px"><button class="ghost" data-act="exJson">${t('download')}</button>
+        <label class="ghost" style="cursor:pointer">${t('exImp')}<input type="file" id="impJson" accept=".json" class="hidden"></label></span></div>
+    </div>
+    <div class="lab2" style="margin-top:18px"><span>${t('prisma')}</span><button class="lnk" data-act="copyPrisma">${t('copy')}</button></div>
+    <pre class="prisma" id="prismaTxt">${esc(prismaText())}</pre>`;
+  if (kind === 'dups') return head(t('dupTitle'), t('dupSub')) + S.dups.map(d => `<div class="duprow">${esc(d.title)}<br><span>${esc(d.a)}　⇄　${esc(d.b)}</span></div>`).join('');
+  return '';
+}
+function guideHTML() {
+  return `<div class="guide"><ol>${GUIDE[LANG].map(x => `<li>${x}</li>`).join('')}</ol>
+    <h4>${t('kTitle')}</h4><div class="keys">
+    <kbd>←</kbd><span>${t('kExcl')}</span><kbd>→</kbd><span>${t('kKeep')}</span><kbd>1 … 9</kbd><span>${t('kNum')}</span>
+    <kbd>Z</kbd><span>${t('kUndo')}</span><kbd>↑ ↓</kbd><span>${t('kNav')}</span><kbd>S</kbd><span>${t('kStar')}</span><kbd>N</kbd><span>${t('kNote')}</span><kbd>Esc</kbd><span>${t('kEsc')}</span></div>
+    <p class="hint" style="margin-top:16px">${t('guideMore')}</p></div>`;
+}
+function setAI(on) {
+  S.settings.useAI = on; saveSettings();
+  if (!on && S.filter === 'diff') S.filter = 'all';
+  if (S.view === 'main') renderMain(); else if (!$('#mask')) renderSetup(); else { const c = $('#useAI'); if (c) c.checked = on; }
+}
+function setLang(v) {
+  LANG = v; store.set('lang', LANG); document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en';
+  if (S.view === 'main') renderMain(); else renderSetup();
+  if (modalKind) openModal(modalKind);
+}
+const updPrompt = () => { const pp = $('#pp'); if (pp) pp.textContent = systemPrompt() + '\n\n---\n' + (S.records[S.cur] ? userMsg(S.records[S.cur]) : ''); };
+function bindModal(kind) {
+  if (kind === 'crit') bindCritForm();
+  if (kind === 'ai') $('#scope').onchange = e => { S.settings.scope = e.target.value; saveSettings(); refreshAIModal(); };
+  if (kind === 'team') $('#impOthers').onchange = e => importOthers([...e.target.files]);
+  if (kind === 'settings' && (S.setTab || 'files') === 'lang') {
+    document.querySelectorAll('input[name=ui]').forEach(r => { r.onchange = () => setLang(r.value); });
+    document.querySelectorAll('input[name=out]').forEach(r => {
+      r.onchange = () => { S.settings.outLang = r.value; $('#outOther').disabled = r.value !== 'other'; saveSettings(); if (r.value === 'other') $('#outOther').focus(); };
+    });
+    $('#outOther').oninput = e => { S.settings.outOther = e.target.value; saveSettings(); };
+  }
+  if (kind === 'settings' && S.setTab === 'api') document.querySelectorAll('input[name=aimode]').forEach(r => { r.onchange = () => { setAI(r.value === 'on'); openModal('settings'); }; });
+  if (kind === 'settings' && S.setTab === 'api' && aiOn()) {
+    const upd = () => {
+      Object.assign(S.settings, { base: $('#base').value, model: $('#model').value, conc: +$('#conc').value || 4,
+        pin: +$('#pin').value || 0, pout: +$('#pout').value || 0, extra: $('#extra').value, remember: $('#rem').checked, think: $('#think').checked });
+      KEY = $('#k').value; saveSettings(); updPrompt();
+    };
+    ['#k', '#base', '#model', '#conc', '#pin', '#pout', '#extra', '#rem', '#think'].forEach(x => { $(x).oninput = upd; $(x).onchange = upd; });
+    updPrompt();
+  }
+  if (kind === 'export') {
+    $('#impJson').onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      try {
+        const p = JSON.parse(await f.text());
+        if (p.sig !== S.sig) { toast(t('impBad')); return; }
+        Object.assign(S, { dec: p.dec || {}, star: p.star || {}, note: p.note || {}, ai: p.ai || {}, others: p.others || {}, final: p.final || {}, hist: [] });
+        if (p.crit) { S.crit = p.crit; saveCrit(); }
+        save(); closeModal(); if (S.view === 'main') renderMain(); else renderSetup(); toast(t('impOk'));
+      } catch (err) { toast(t('impBad')); }
+    };
+  }
+}
+
+/* ================= 多人：导出、导入、对比 ================= */
+function exportMine() {
+  const records = S.records.map(r => ({ mk: r.mk, key: r.key, title: r.title, year: r.year, d: S.dec[r.id]?.d || '', ec: S.dec[r.id]?.ec || '', note: S.note[r.id] || '', star: S.star[r.id] ? 1 : 0 }));
+  download(`${LANG === 'zh' ? '筛选结果' : 'screening-results'}_${myRid()}.json`,
+    JSON.stringify({ app: 'abs-screener', kind: 'reviewer-results', v: 2, rid: myRid(), at: new Date().toISOString(), crit: S.crit, records }, null, 1), 'application/json');
+}
+async function importOthers(files) {
+  const byMk = new Map(S.records.map(r => [r.mk, r.id]));
+  for (const f of files) {
+    let p; try { p = JSON.parse(await f.text()); } catch (e) { toast(t('impBadTeam')); continue; }
+    if (p.kind !== 'reviewer-results' || !Array.isArray(p.records)) { toast(t('impBadTeam')); continue; }
+    const rid = String(p.rid || f.name.replace(/\.json$/i, '')).trim();
+    if (rid === myRid()) { toast(t('impMineSkip', rid)); continue; }
+    const dec = {}, note = {}; let hit = 0, miss = 0;
+    p.records.forEach(x => {
+      const id = byMk.get(x.mk); if (!id) { miss++; return; }
+      if (x.d === 'keep' || x.d === 'excl') { dec[id] = { d: x.d, ec: x.ec || '' }; hit++; }
+      if (x.note) note[id] = x.note;
+    });
+    S.others[rid] = { dec, note, at: p.at || '', crit: p.crit || null };
+    toast(t('importedRv', rid, hit) + (miss ? ' · ' + t('impNotMatched', miss) : ''));
+  }
+  save(); if (S.view === 'main') renderMain(); openModal('team');
+}
+function exportCompare() {
+  const zh = LANG === 'zh', R = reviewers();
+  const lab = d => (d ? (d.d === 'keep' ? (zh ? '保留' : 'keep') : (zh ? '排除' : 'exclude')) : '');
+  const stl = { agree: zh ? '一致' : 'agree', conflict: zh ? '有分歧' : 'disagree', partial: zh ? '没筛完' : 'incomplete' };
+  const H = [zh ? '序号' : 'No.', zh ? '题目' : 'Title', zh ? '年份' : 'Year',
+    ...R.flatMap(x => [x.rid, `${x.rid} ${zh ? '理由' : 'reason'}`, `${x.rid} ${zh ? '备注' : 'note'}`]),
+    zh ? '是否一致' : 'Agreement', zh ? '最终' : 'Final', zh ? '最终理由' : 'Final reason'];
+  const rows = S.records.map((r, i) => { const f = finalOf(r.id); return [i + 1, r.title, r.year, ...R.flatMap(x => [lab(x.dec[r.id]), x.dec[r.id]?.ec || '', x.note[r.id] || '']), stl[status(r.id)], lab(f), f?.ec || '']; });
+  download((zh ? '多人筛选对比表' : 'reviewer-comparison') + '.csv', '﻿' + [H, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n'), 'text/csv;charset=utf-8');
+}
+function prismaText() {
+  const tot = S.files.reduce((a, f) => a + f.recs.length, 0), zh = LANG === 'zh';
+  let k = 0, x = 0; const reasons = {};
+  S.records.forEach(r => { const d = decOf(r.id); if (d?.d === 'keep') k++; else if (d?.d === 'excl') { x++; const c = d.ec || t('pNoReason'); reasons[c] = (reasons[c] || 0) + 1; } });
+  const ecText = Object.fromEntries(EC().map(e => [e.code, e.text]));
+  const per = S.files.map(f => `${f.name} ${f.recs.length}`).join(zh ? '；' : '; ');
+  const L = [`${t('pImported')}: ${tot}${zh ? `（${per}）` : ` (${per})`}`, `${t('pDup')}: ${S.dups.length}`, `${t('pAfter')}: ${S.records.length}`,
+    `${t('pScreened')}${hasTeam() ? t('pFinal') : ''}: ${k + x}`, `  ${t('pExcl')}: ${x}`];
+  Object.entries(reasons).sort((a, b) => b[1] - a[1]).forEach(([c, n]) => L.push(`    ${c}${ecText[c] ? ' ' + ecText[c] : ''}: ${n}`));
+  L.push(`  ${t('pKept')}: ${k}`);
+  if (hasTeam()) { const ts = teamStats(); if (ts.conf > ts.res) L.push(`  ${t('pUnres')}: ${ts.conf - ts.res}`); if (ts.part) L.push(`  ${t('pTodo')}: ${ts.part}`); }
+  else if (S.records.length - k - x) L.push(`  ${t('pTodo')}: ${S.records.length - k - x}`);
+  const aiN = S.records.filter(r => S.ai[r.id] && !S.ai[r.id].err).length;
+  const both = S.records.filter(r => S.dec[r.id] && S.ai[r.id] && !S.ai[r.id].err), agree = both.filter(r => !differs(r.id)).length;
+  if (aiOn() && aiN) L.push(`${t('pAI')}: ${aiN}${both.length ? ` · ${t('pAgree')} ${agree}/${both.length}（${Math.round(100 * agree / both.length)}%）` : ''}`);
+  if (hasTeam()) L.push('', teamReport());
+  return L.join('\n');
+}
+function csvCell(v) { const s = String(v ?? ''); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function exportCsv() {
+  const zh = LANG === 'zh';
+  const H = zh ? ['序号', '引用键', '来源文件', '题目', '作者', '年份', '出处', '我的判断', '排除理由', '星标', '备注', 'AI 建议', 'AI 依据的标准', 'AI 理由', 'AI 证据', '和 AI 一致']
+    : ['No.', 'Keys', 'Files', 'Title', 'Authors', 'Year', 'Venue', 'My decision', 'Exclusion reason', 'Starred', 'Note', 'AI suggestion', 'AI criterion', 'AI reason', 'AI evidence', 'Agrees with AI'];
+  const lab = { keep: zh ? '保留' : 'keep', excl: zh ? '排除' : 'exclude' };
+  const al = { include: zh ? '建议保留' : 'include', exclude: zh ? '建议排除' : 'exclude', unsure: zh ? '看不出来' : 'unsure' };
+  const rows = S.records.map((r, i) => {
+    const d = S.dec[r.id], a = S.ai[r.id], ok = a && !a.err;
+    return [i + 1, r.uids.map(u => u.split(':').slice(1).join(':')).join(' | '), r.files.join(' | '), r.title, r.authors.join('; '), r.year, r.venue,
+      d ? lab[d.d] : (zh ? '未筛' : 'not screened'), d?.ec || '', S.star[r.id] ? '★' : '', S.note[r.id] || '',
+      ok ? al[a.decision] : (a?.err ? 'error' : ''), ok ? a.criterion : '', ok ? a.reason : '', ok ? a.evidence.join(' | ') : '',
+      d && ok ? (differs(r.id) ? (zh ? '否' : 'no') : (zh ? '是' : 'yes')) : ''];
+  });
+  download((zh ? '摘要筛选结果' : 'abstract-screening') + (multi() ? '_' + myRid() : '') + '.csv', '﻿' + [H, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n'), 'text/csv;charset=utf-8');
+}
+function exportBib() {
+  const keep = S.records.filter(r => decOf(r.id)?.d === 'keep');
+  download((LANG === 'zh' ? '保留进入全文' : 'kept-for-full-text') + '.bib', keep.map(r => r.raw).join('\n\n') + '\n', 'text/plain;charset=utf-8');
+}
+function exportJson() {
+  download((LANG === 'zh' ? '筛选进度备份' : 'screening-progress') + (multi() ? '_' + myRid() : '') + '.json',
+    JSON.stringify({ app: 'abs-screener', v: 2, sig: S.sig, dec: S.dec, star: S.star, note: S.note, ai: S.ai, others: S.others, final: S.final, crit: S.crit, at: new Date().toISOString() }, null, 1), 'application/json');
+}
+
+/* ================= 事件 ================= */
+async function aiOne() {
+  const r = S.records[S.cur]; if (!r) return;
+  if (!KEY.trim()) { S.setTab = 'api'; openModal('settings'); toast(t('needKey')); return; }
+  if (!IC().length && !EC().length) { toast(t('needCrit')); return; }
+  const ctrl = new AbortController();
+  delete S.ai[r.id];
+  const box = $('#side .aibox'); if (box) box.innerHTML = `<h3><span>✦ ${t('aiTitle')}</span></h3><p class="mutedp">…</p>`;
+  try { S.ai[r.id] = await callAI(r, ctrl.signal); } catch (e) { S.ai[r.id] = { err: e.message }; }
+  save(); renderAll(); refreshAIModal();
+}
+document.addEventListener('click', e => {
+  const menu = $('#menu');
+  if (menu && !e.target.closest('.menu-wrap')) menu.classList.add('hidden');
+  const b = e.target.closest('[data-act],[data-filter],[data-go],[data-ec],[data-ev],[data-tab],[data-mode]'); if (!b) return;
+  if (b.dataset.tab) { S.setTab = b.dataset.tab; openModal('settings'); return; }
+  if (b.dataset.mode) { setMode(b.dataset.mode); return; }
+  if (menu && b.closest('#menu')) menu.classList.add('hidden');
+  if (b.dataset.filter) { S.filter = b.dataset.filter; const vis = visible(); if (vis.length && !vis.some(([, i]) => i === S.cur)) S.cur = vis[0][1]; renderList(); renderCard(); renderSide(); return; }
+  if (b.dataset.go) { S.cur = +b.dataset.go; save(); renderList(); renderCard(); renderSide(); return; }
+  if (b.dataset.ec) { decide('excl', b.dataset.ec); return; }
+  if (b.dataset.ev) { const m = document.querySelectorAll(`mark.ev[data-q="${b.dataset.ev}"]`); if (m.length) { m[0].scrollIntoView({ block: 'center', behavior: 'smooth' }); m.forEach(x => { x.classList.remove('flash'); void x.offsetWidth; x.classList.add('flash'); }); } return; }
+  const act = b.dataset.act;
+  ({
+    lang: () => setLang(LANG === 'zh' ? 'en' : 'zh'),
+    settings: () => openModal('settings'),
+    guide: () => { S.setTab = 'help'; openModal('settings'); },
+    openApi: () => { S.setTab = 'api'; openModal('settings'); },
+    example: () => { $('#icText').value = EXAMPLE[LANG].ic; $('#ecText').value = EXAMPLE[LANG].ec; $('#hlKeep').value = EXAMPLE.keep; $('#hlExcl').value = EXAMPLE.excl; $('#hlMore').open = true; $('#icText').dispatchEvent(new Event('input')); },
+    clearFiles: () => { S.files = []; afterFilesChanged(); },
+    start: async () => {
+      if (!S.records.length) return;
+      if (multi() && !String(S.settings.rid || '').trim()) { toast(t('needRid')); $('[data-ridinput]')?.focus(); return; }
+      if (S.loadedSig !== S.sig) await load();
+      S.view = 'main'; store.set('view', 'main'); renderMain();
+    },
+    home: () => { S.view = 'setup'; store.set('view', 'setup'); closeModal(); renderSetup(); },
+    dups: () => openModal('dups'), help: () => { S.setTab = 'help'; openModal('settings'); },
+    ai: () => { if (aiOn()) openModal('ai'); else { S.setTab = 'api'; openModal('settings'); } },
+    crit: () => openModal('crit'), export: () => openModal('export'), team: () => openModal('team'),
+    close: () => { closeModal(); if (S.view === 'main') renderMain(); },
+    excl: () => decide('excl'), keep: () => decide('keep'), undo, prev: () => go(-1), next: () => go(1),
+    menu: () => $('#menu').classList.toggle('hidden'),
+    noteOpen: () => { S.noteOpen = S.records[S.cur].id; renderCard(); },
+    star: () => { const r = S.records[S.cur]; if (S.star[r.id]) delete S.star[r.id]; else S.star[r.id] = 1; save(); renderCard(); renderList(); },
+    aiOne, aiStart: () => {
+      if (!KEY.trim()) { toast(t('needKey')); S.setTab = 'api'; openModal('settings'); return; }
+      if (!IC().length && !EC().length) { toast(t('needCrit')); return; }
+      runAI(AI.paused && AI.queue.length ? AI.queue.slice() : aiTargets(S.settings.scope));
+    },
+    aiPause: () => { AI.paused = true; refreshAIModal(); },
+    aiStop: () => { AI.queue = []; AI.ctrl?.abort(); },
+    aiRetry: () => runAI(S.records.filter(r => S.ai[r.id]?.err).map(r => r.id)),
+    exCsv: exportCsv, exBib: exportBib, exJson: exportJson, exMine: exportMine, exCompare: exportCompare,
+    rmRv: () => { delete S.others[b.dataset.rv]; if (!hasTeam()) S.mode = 'self'; save(); if (S.view === 'main') renderMain(); openModal('team'); },
+    startTeam: () => { closeModal(); if (S.view !== 'main') { S.view = 'main'; store.set('view', 'main'); } setMode('team'); },
+    copyPrisma: () => { navigator.clipboard?.writeText(prismaText()).then(() => toast(t('copied'))); },
+    copyReport: () => { navigator.clipboard?.writeText(teamReport()).then(() => toast(t('copied'))); },
+  }[act] || (() => {}))();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { $('#menu')?.classList.add('hidden'); if ($('#mask')) { closeModal(); if (S.view === 'main') renderMain(); } else if (document.activeElement) document.activeElement.blur(); return; }
+  if (S.view !== 'main' || $('#mask')) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (k === 'ArrowLeft' || k === 'x' || k === 'X') { e.preventDefault(); decide('excl'); }
+  else if (k === 'ArrowRight' || k === 'k' || k === 'K') { e.preventDefault(); decide('keep'); }
+  else if (/^[1-9]$/.test(k)) { const ec = EC()[+k - 1]; if (ec) { e.preventDefault(); decide('excl', ec.code); } }
+  else if (k === 'z' || k === 'Z' || k === 'Backspace') { e.preventDefault(); undo(); }
+  else if (k === 'ArrowUp') { e.preventDefault(); go(-1); }
+  else if (k === 'ArrowDown') { e.preventDefault(); go(1); }
+  else if (k === 's' || k === 'S') { e.preventDefault(); $('[data-act="star"]')?.click(); }
+  else if (k === 'n' || k === 'N') { e.preventDefault(); if ($('#note')) $('#note').focus(); else { S.noteOpen = S.records[S.cur].id; renderCard(); } }
+  else if (k === '?') { S.setTab = 'help'; openModal('settings'); }
+});
+document.addEventListener('change', e => {
+  const inp = e.target.closest('input[data-pick]');
+  if (inp) { addFiles([...inp.files], inp.dataset.pick === 'dir'); inp.value = ''; return; }
+  if (e.target.name === 'team_s' || e.target.name === 'team_m') setMulti(e.target.value === 'multi');
+});
+document.addEventListener('input', e => {
+  if (e.target.dataset && e.target.dataset.ridinput) { S.settings.rid = e.target.value.trim(); saveSettings(); }
+});
+window.addEventListener('beforeunload', save);
+
+// 打开页面时：上次导入的文献还在，就直接恢复；上次在筛选页，就回到筛选页
+(async function init() {
+  document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en';
+  const saved = await DB.get('files');
+  if (Array.isArray(saved) && saved.length) {
+    S.files = saved.map(f => ({ name: f.name, text: f.text, recs: parseBib(f.text || '', f.name) })).filter(f => f.recs.length);
+    rebuild();
+    if (S.records.length) {
+      await load();
+      if (store.get('view', 'setup') === 'main') { S.view = 'main'; renderMain(); toast(t('restored')); return; }
+    }
+  }
+  renderSetup();
+})();
+})();
+</script>
+</body>
+</html>

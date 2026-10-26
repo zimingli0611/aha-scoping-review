@@ -1,0 +1,1664 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全文筛选助手 · Full-Text Screener</title>
+<style>
+:root {
+  --bg: #f6f2ea; --panel: #fffdf8; --card: #ffffff; --line: #e9e1d5; --line2: #d8ccbb;
+  --ink: #29231c; --ink2: #574e44; --muted: #8b8175;
+  --brand: #8a5a3b; --brand-soft: #f4e8dc;
+  --keep: #2c7a4b; --keep-soft: #e2f1e7; --excl: #c0392b; --excl-soft: #fbe6e2;
+  --unsure: #a86b12; --unsure-soft: #fcf0d7;
+  --ai: #4b44b0; --ai-soft: #ecebfa;
+  --mark: #ffe27a; --todo: #ddd3c5;
+  --shadow: 0 1px 2px rgba(60, 40, 20, .05), 0 8px 28px rgba(60, 40, 20, .08);
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --serif: Charter, "Iowan Old Style", "Palatino Linotype", Georgia, "Songti SC", "Noto Serif SC", serif;
+}
+* { box-sizing: border-box; }
+html, body, #app { margin: 0; height: 100%; }
+body { font: 15px/1.5 var(--sans); color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--brand); }
+kbd { font: 600 11px/1 var(--sans); padding: 3px 6px; border-radius: 5px; border: 1px solid currentColor; opacity: .7; margin-left: 6px; }
+.hidden { display: none !important; }
+
+/* ---------- 顶栏 ---------- */
+.shell { display: flex; flex-direction: column; height: 100%; }
+.top { display: flex; align-items: center; gap: 24px; padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--line); min-height: 58px; flex: none; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand svg { flex: none; }
+.brand b { font-size: 17px; letter-spacing: .02em; white-space: nowrap; }
+.brand small { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.prog { flex: 1; min-width: 180px; max-width: 560px; margin: 0 auto; }
+.prog .nums { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); margin-bottom: 6px; white-space: nowrap; }
+.prog .nums b { color: var(--ink); font-size: 15px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+.dot.k { background: var(--keep); } .dot.x { background: var(--excl); } .dot.t { background: var(--todo); } .dot.a { background: var(--ai); }
+.bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--todo); }
+.bar i { display: block; height: 100%; transition: width .3s; }
+.bar .k { background: var(--keep); } .bar .x { background: var(--excl); }
+.aibar { margin-top: 6px; height: 4px; border-radius: 99px; background: var(--ai-soft); overflow: hidden; }
+.aibar i { display: block; height: 100%; background: var(--ai); transition: width .3s; }
+.tools { display: flex; gap: 8px; }
+.tb { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line2); background: var(--card); border-radius: 10px; font-size: 13.5px; color: var(--ink2); white-space: nowrap; }
+.tb:hover { border-color: var(--brand); color: var(--brand); }
+.tb.ai { border-color: #cfcbf3; color: var(--ai); background: var(--ai-soft); }
+.tb.ai.on { background: var(--ai); color: #fff; border-color: var(--ai); }
+
+/* ---------- 三栏 ---------- */
+.main { display: grid; grid-template-columns: 270px minmax(0, 1fr) 330px; flex: 1; min-height: 0; }
+.list { border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 14px 8px; }
+.tab { border: 1px solid var(--line2); background: transparent; border-radius: 99px; padding: 3px 10px; font-size: 12.5px; color: var(--ink2); }
+.tab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.tab .n { opacity: .65; margin-left: 4px; }
+.search { margin: 4px 14px 10px; padding: 7px 11px; border: 1px solid var(--line2); border-radius: 9px; background: var(--card); }
+.items { overflow: auto; flex: 1; padding: 0 8px 12px; }
+.it { display: grid; grid-template-columns: 30px 1fr 8px; gap: 6px; align-items: center; padding: 7px 8px; border-radius: 9px; cursor: pointer; font-size: 13px; color: var(--ink2); }
+.it:hover { background: var(--brand-soft); }
+.it.cur { background: var(--card); box-shadow: inset 3px 0 0 var(--brand), 0 1px 3px rgba(0,0,0,.06); color: var(--ink); }
+.it .i { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; padding-top: 1px; }
+.it .tt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.it .dot { margin: 0; }
+.it .st { display: flex; gap: 3px; padding-top: 4px; }
+.empty-list { color: var(--muted); font-size: 13px; padding: 20px 14px; }
+
+.center { overflow: auto; position: relative; display: flex; flex-direction: column; }
+.paper { width: 100%; max-width: 820px; margin: 0 auto; padding: 30px 34px 0; flex: 1; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 99px; background: var(--brand-soft); color: var(--brand); font-size: 12px; font-weight: 600; }
+.chip.g { background: #efebe4; color: var(--ink2); font-weight: 500; }
+.chip.warn { background: var(--unsure-soft); color: var(--unsure); }
+.paper h1 { font: 650 24px/1.34 var(--sans); margin: 10px 0 8px; letter-spacing: -.005em; }
+.meta .stamp { margin-left: auto; }
+.byline { color: var(--muted); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kwl { color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.6; }
+.kwl .sep { color: var(--line2); }
+.addnote { margin: 2px 0 14px; font-size: 13px; color: var(--muted); }
+.authors { color: var(--ink2); font-size: 14px; }
+.venue { color: var(--muted); font-size: 13.5px; font-style: italic; margin-top: 2px; }
+.kws { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; }
+.kw { font-size: 12.5px; padding: 2px 9px; border: 1px solid var(--line2); border-radius: 99px; color: var(--ink2); background: var(--card); }
+.abs { font: 17.5px/1.72 var(--serif); color: #2e2821; margin: 18px 0 10px; padding: 22px 26px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+.abs .lab { font: 700 11.5px/1 var(--sans); letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+.abs.none { color: var(--muted); font-style: italic; }
+mark.ev { background: linear-gradient(transparent 12%, var(--mark) 12%, var(--mark) 88%, transparent 88%); color: inherit; padding: 0 1px; border-radius: 3px; }
+mark.ev.flash { animation: flash 1.2s ease; }
+@keyframes flash { 0%, 40% { background: #ffc94d; box-shadow: 0 0 0 3px #ffc94d; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.hk { text-decoration: underline 2px var(--keep); text-underline-offset: 4px; }
+.hx { text-decoration: underline 2px var(--excl); text-underline-offset: 4px; }
+.stamp { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; padding: 4px 11px; border-radius: 8px; }
+.stamp.k { background: var(--keep-soft); color: var(--keep); } .stamp.x { background: var(--excl-soft); color: var(--excl); }
+.note { width: 100%; margin: 6px 0 18px; border: 1px dashed var(--line2); background: transparent; border-radius: 10px; padding: 8px 12px; font-size: 13.5px; resize: vertical; min-height: 38px; }
+.note:focus { outline: none; border-style: solid; border-color: var(--brand); background: var(--card); }
+
+.decide { position: sticky; bottom: 0; background: linear-gradient(rgba(246, 242, 234, 0), var(--bg) 26%); padding: 20px 34px 12px; }
+.decide .row { max-width: 792px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.big { border: 0; border-radius: 14px; padding: 13px 18px; font-size: 16.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform .06s, box-shadow .2s; box-shadow: var(--shadow); }
+.big:active { transform: translateY(1px); }
+.big.x { background: var(--card); color: var(--excl); border: 2px solid #f0c9c2; }
+.big.x:hover, .big.x.sel { background: var(--excl); color: #fff; border-color: var(--excl); }
+.big.k { background: var(--keep); color: #fff; border: 2px solid var(--keep); }
+.big.k:hover { filter: brightness(1.06); }
+.big.k.sel { box-shadow: 0 0 0 4px #bfe3cc; }
+.big small { font-weight: 500; opacity: .8; font-size: 13px; }
+.reasons { display: flex; gap: 5px; align-items: center; font-size: 12.5px; color: var(--muted); overflow-x: auto; scrollbar-width: none; min-width: 0; }
+.reasons > span { white-space: nowrap; margin-right: 2px; }
+.rc { flex: none; border: 1px solid #f1d8d2; background: var(--card); color: var(--excl); border-radius: 8px; padding: 3px 8px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.rc i { font-style: normal; opacity: .55; margin-right: 3px; font-weight: 500; }
+.rc:hover, .rc.sel { background: var(--excl-soft); border-color: var(--excl); }
+.rc.sug { box-shadow: 0 0 0 2px var(--ai-soft); border-color: var(--ai); }
+.minor { max-width: 792px; margin: 10px auto 0; display: flex; gap: 12px; justify-content: space-between; align-items: center; font-size: 13px; }
+.navs { display: flex; gap: 2px; flex: none; }
+.ib { border: 0; background: none; width: 32px; height: 30px; border-radius: 8px; color: var(--ink2); font-size: 15px; }
+.ib:hover { background: var(--brand-soft); color: var(--brand); }
+.ib.on { color: #b7791f; }
+.ib:disabled { opacity: .35; cursor: default; background: none; }
+.lnk { border: 0; background: none; color: var(--ink2); padding: 4px 6px; border-radius: 7px; }
+.lnk:hover { background: var(--brand-soft); color: var(--brand); }
+.lnk.on { color: #b7791f; }
+
+.side { border-left: 1px solid var(--line); background: var(--panel); overflow: auto; padding: 22px 18px 30px; }
+.critbox summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.critbox summary::-webkit-details-marker { display: none; }
+.critbox summary h3 { margin: 0; }
+.critbox summary .hint::after { content: ' ▾'; }
+.critbox[open] summary { margin-bottom: 10px; }
+.critbox[open] summary .hint::after { content: ' ▴'; }
+.critline { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+.ghost.sm { padding: 6px 12px; font-size: 13px; margin-top: 10px; }
+.menu-wrap { position: relative; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; min-width: 190px; z-index: 10; }
+.menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 8px; font-size: 14px; color: var(--ink2); }
+.menu button:hover { background: var(--brand-soft); color: var(--brand); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.tb.icon { padding: 6px 12px; font-size: 17px; line-height: 1; }
+.finds { padding: 0 14px 10px; display: grid; gap: 6px; }
+.finds .search { margin: 0; }
+details.more { margin-top: 12px; }
+details.more > summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--ink2); }
+details.more[open] > summary { margin-bottom: 10px; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 15px 16px; margin-bottom: 14px; }
+.box h3 { margin: 0 0 10px; font-size: 12px; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; display: flex; align-items: center; justify-content: space-between; }
+.aibox { border-color: #d8d5f5; }
+.verdict { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+.verdict .tag { padding: 3px 10px; border-radius: 8px; }
+.v-exclude .tag { background: var(--excl-soft); color: var(--excl); }
+.v-include .tag { background: var(--keep-soft); color: var(--keep); }
+.v-unsure .tag { background: var(--unsure-soft); color: var(--unsure); }
+.verdict .code { font-size: 13px; color: var(--ink2); font-weight: 600; }
+.why { margin: 10px 0 4px; color: var(--ink); line-height: 1.6; }
+.evl { margin: 8px 0 0; padding: 0; list-style: none; }
+.evl li { font: 14px/1.5 var(--serif); padding: 7px 10px; margin-top: 6px; background: #fffbea; border-left: 3px solid var(--mark); border-radius: 0 8px 8px 0; cursor: pointer; }
+.evl li:hover { background: #fff4c2; }
+.evl li.miss { opacity: .6; cursor: default; }
+.mutedp { color: var(--muted); font-size: 13.5px; margin: 0; }
+.agree { margin-top: 10px; font-size: 12.5px; padding: 6px 9px; border-radius: 8px; }
+.agree.no { background: var(--unsure-soft); color: var(--unsure); }
+.agree.yes { background: #f0efe9; color: var(--muted); }
+.crit { list-style: none; padding: 0; margin: 0; font-size: 13.5px; }
+.crit li { display: grid; grid-template-columns: 46px 1fr; gap: 6px; padding: 5px 0; border-top: 1px dashed var(--line); }
+.crit li:first-child { border-top: 0; }
+.crit .c { font-weight: 700; font-size: 12px; padding-top: 2px; }
+.crit.ic .c { color: var(--keep); } .crit.ec .c { color: var(--excl); }
+.crit .k { color: var(--muted); font-size: 11px; font-weight: 500; }
+.hint { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+
+/* ---------- 开始页 ---------- */
+.setup { max-width: 1060px; margin: 0 auto; padding: 46px 28px 60px; }
+.hero { text-align: center; margin-bottom: 30px; }
+.hero h1 { font-size: 32px; margin: 12px 0 8px; letter-spacing: .02em; }
+.hero p { color: var(--ink2); margin: 0 auto; max-width: 640px; font-size: 15.5px; }
+.steps { display: grid; grid-template-columns: 1fr 1.35fr; gap: 18px; }
+.step { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px; box-shadow: var(--shadow); }
+.step.wide { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.step h2 { font-size: 17px; margin: 0 0 6px; display: flex; align-items: center; gap: 10px; }
+.num { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--brand); color: #fff; font-size: 14px; flex: none; }
+.step p { margin: 0 0 14px; color: var(--ink2); font-size: 14px; }
+.drop { text-align: center; border: 2px dashed var(--line2); border-radius: 14px; padding: 20px 14px 16px; color: var(--ink2); transition: .15s; background: var(--panel); }
+.drop:hover, .drop.over { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
+.drop input { display: none; }
+.files { margin-top: 12px; font-size: 13.5px; }
+.files div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px dashed var(--line); }
+.files div > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.files div > span:last-child { flex: none; }
+.pickrow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+.pick { cursor: pointer; }
+.herobtns { margin-top: 14px; display: flex; gap: 8px; justify-content: center; }
+.seg { display: flex; gap: 4px; background: #efe9df; padding: 4px; border-radius: 12px; margin: 6px 0 18px; }
+.seg button { flex: 1; border: 0; background: none; padding: 7px 10px; border-radius: 9px; font-size: 13.5px; color: var(--ink2); }
+.seg button.on { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+.pane { min-height: 280px; }
+.radios { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+.rd { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; font-weight: 400; cursor: pointer; }
+.aisum { font-size: 13.5px; color: var(--ink2); margin: 0 0 12px; }
+.guide ol { padding-left: 20px; margin: 0 0 14px; line-height: 1.7; font-size: 14px; }
+.guide li { margin-bottom: 6px; }
+.guide h4 { margin: 16px 0 10px; font-size: 12px; color: var(--muted); letter-spacing: .1em; }
+.files .sum { font-weight: 700; color: var(--ink); }
+.lab2 { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 13.5px; margin: 10px 0 6px; }
+.lab2 .ic { color: var(--keep); } .lab2 .ec { color: var(--excl); }
+textarea.ta { width: 100%; min-height: 96px; border: 1px solid var(--line2); border-radius: 10px; padding: 9px 11px; font-size: 13.5px; line-height: 1.55; resize: vertical; background: var(--panel); }
+textarea.ta:focus, input.in:focus, select.in:focus { outline: none; border-color: var(--brand); background: var(--card); }
+input.in, select.in { width: 100%; border: 1px solid var(--line2); border-radius: 9px; padding: 8px 10px; font-size: 13.5px; background: var(--panel); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.primary { border: 0; background: var(--brand); color: #fff; padding: 12px 22px; border-radius: 12px; font-weight: 700; font-size: 15.5px; box-shadow: var(--shadow); white-space: nowrap; }
+.primary:disabled { background: var(--line2); cursor: not-allowed; box-shadow: none; }
+.primary.ai { background: var(--ai); }
+.ghost { border: 1px solid var(--line2); background: var(--card); padding: 8px 14px; border-radius: 10px; font-size: 13.5px; white-space: nowrap; }
+.ghost:hover { border-color: var(--brand); color: var(--brand); }
+.foot { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 26px; }
+
+/* ---------- 弹窗 ---------- */
+.mask { position: fixed; inset: 0; background: rgba(40, 30, 20, .32); display: grid; place-items: center; z-index: 20; padding: 20px; }
+.modal { background: var(--panel); border-radius: 18px; box-shadow: 0 20px 60px rgba(40, 30, 20, .25); width: min(680px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 24px 26px; }
+.modal h2 { margin: 0 0 4px; font-size: 20px; display: flex; justify-content: space-between; align-items: center; }
+.modal .x { border: 0; background: none; font-size: 22px; color: var(--muted); line-height: 1; }
+.modal .sub { color: var(--ink2); font-size: 13.5px; margin: 0 0 16px; }
+.fld { margin-bottom: 12px; }
+.fld label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 5px; }
+.fld .hint { margin-top: 4px; }
+.privacy { background: var(--ai-soft); color: #39338a; border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.6; margin: 4px 0 14px; }
+.est { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink2); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 10px 0; }
+.est b { color: var(--ink); }
+.actions { display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+details.pp summary { cursor: pointer; font-size: 13px; color: var(--ink2); }
+details.pp pre { white-space: pre-wrap; font-size: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px; max-height: 240px; overflow: auto; }
+.ex-grid { display: grid; gap: 10px; }
+.ex { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); background: var(--card); border-radius: 12px; }
+.ex b { display: block; } .ex span { color: var(--muted); font-size: 13px; }
+.ex > :last-child { flex: none; }   /* 说明文字再长，右边的按钮也不被挤成两行 */
+pre.prisma { white-space: pre-wrap; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font: 13.5px/1.7 var(--sans); }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 14px; align-items: center; }
+.keys kbd { opacity: 1; margin: 0; justify-self: start; }
+.duprow { padding: 8px 0; border-top: 1px dashed var(--line); font-size: 13.5px; }
+.duprow span { color: var(--muted); font-size: 12.5px; }
+.toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 10px; font-size: 14px; z-index: 30; box-shadow: var(--shadow); }
+
+@media (max-width: 1180px) { .main { grid-template-columns: 250px minmax(0, 1fr) 300px; } .paper { padding: 22px 24px 0; } .decide { padding: 18px 24px 14px; } }
+@media (max-width: 960px) {
+  .shell { height: auto; } .main { grid-template-columns: 1fr; } .list { max-height: 260px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .side { border-left: 0; } .steps { grid-template-columns: 1fr; } .step.wide { flex-direction: column; align-items: stretch; }
+  .top { flex-wrap: wrap; } .prog { order: 3; flex-basis: 100%; max-width: none; }
+}
+
+/* ---------- 多人筛选 ---------- */
+.dot.c { background: var(--unsure); }
+.stamp.c { background: var(--unsure-soft); color: var(--unsure); }
+.stamp.g { background: #efebe4; color: var(--ink2); font-weight: 600; }
+.seg.mini { margin: 0; padding: 3px; flex: none; }
+.seg.mini button { flex: none; padding: 5px 12px; font-size: 13px; }
+.ridchip { font-size: 12px; font-weight: 700; color: var(--brand); background: var(--brand-soft); border-radius: 99px; padding: 2px 9px; white-space: nowrap; }
+.rvrow { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px dashed var(--line); font-size: 14px; }
+.rvrow:first-child { border-top: 0; }
+.rvrow .lnk { margin-left: auto; }
+.rv { display: grid; grid-template-columns: 52px 1fr; gap: 3px 8px; align-items: center; padding: 7px 0; border-top: 1px dashed var(--line); font-size: 13.5px; }
+.rv:first-of-type { border-top: 0; }
+.rv b { font-size: 12.5px; }
+.rv .stamp { padding: 2px 8px; font-size: 12px; justify-self: start; }
+.rv .hint { grid-column: 2; }
+.teamrow { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 2px 0 4px; font-size: 14px; }
+.teamrow .lab { font-weight: 600; }
+.teamrow input.in { width: 150px; }
+.step.wide .left { display: grid; gap: 8px; }
+/* ---------- 全文筛选：三栏换成“列表 · PDF · 判断” ---------- */
+.main.ft { grid-template-columns: 250px minmax(0, 1fr) 380px; }
+.viewer { position: relative; display: flex; flex-direction: column; min-height: 0; background: #e9e4dc; }
+.viewer iframe { flex: 1; width: 100%; border: 0; background: #525659; }
+.nopdf { max-width: 640px; margin: 40px auto; padding: 0 28px; }
+.nopdf .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 24px 26px; box-shadow: var(--shadow); }
+.nopdf h2 { margin: 0 0 6px; font-size: 19px; }
+.nopdf .abs { font-size: 15.5px; margin: 14px 0 0; padding: 16px 18px; box-shadow: none; }
+.findrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.findrow a, .findrow label, .findrow button, .findrow select { text-decoration: none; }
+.side.ft { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.sidescroll { overflow: auto; flex: 1; padding: 18px 18px 10px; }
+.rec h1 { font: 650 17px/1.4 var(--sans); margin: 6px 0 6px; }
+.rec .byline { white-space: normal; }
+.rec .meta { font-size: 12.5px; }
+.absd { margin-top: 10px; }
+.absd > summary { cursor: pointer; font-size: 13px; color: var(--ink2); font-weight: 600; }
+.absd .abs { font-size: 14.5px; padding: 12px 14px; margin: 8px 0 0; box-shadow: none; }
+.r1note { margin-top: 10px; font-size: 13px; color: var(--ink2); background: #f3efe7; border-radius: 10px; padding: 8px 10px; }
+.decide.ft { position: static; background: var(--panel); border-top: 1px solid var(--line); padding: 12px 18px 14px; }
+.decide.ft .row { grid-template-columns: 1fr 1fr; gap: 10px; }
+.decide.ft .big { padding: 11px 12px; font-size: 15.5px; }
+.big.n { grid-column: 1 / -1; background: var(--card); color: var(--unsure); border: 2px dashed #e6c58f; padding: 8px 12px; font-size: 14px; box-shadow: none; }
+.big.n:hover, .big.n.sel { background: var(--unsure-soft); border-style: solid; border-color: var(--unsure); }
+.reasons.ft { flex-wrap: wrap; overflow: visible; margin-top: 10px; row-gap: 6px; }
+.rc.need { animation: need 1.2s ease 2; }
+@keyframes need { 0%, 50% { box-shadow: 0 0 0 3px #f6c7bd; } 100% { box-shadow: none; } }
+.nrq { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 0; }
+.nrq button { border: 1px dashed #e6c58f; background: var(--card); color: var(--unsure); border-radius: 8px; padding: 2px 8px; font-size: 12px; }
+.decide.ft .note { margin: 10px 0 0; min-height: 52px; }
+.decide.ft .minor { margin-top: 8px; }
+.stamp.n { background: var(--unsure-soft); color: var(--unsure); }
+.dot.n { background: #fff; box-shadow: inset 0 0 0 2px var(--unsure); }
+.dot.p { background: #fff; box-shadow: inset 0 0 0 1.5px var(--todo); }
+.bar .n { background: var(--unsure); }
+.it .pdfmark { font-size: 10px; color: var(--muted); margin-left: 2px; }
+.warnline { color: var(--unsure); }
+.okline { color: var(--keep); }
+.badline { color: var(--excl); }
+
+/* ---------- 流程图页 ---------- */
+.flowpage { display: grid; grid-template-columns: minmax(0, 1fr) 400px; flex: 1; min-height: 0; }
+.flowcanvas { overflow: auto; padding: 28px; display: flex; justify-content: center; align-items: flex-start; background: #ece7df; }
+.flowcanvas svg { background: #fff; box-shadow: var(--shadow); border-radius: 6px; max-width: 100%; height: auto; }
+.flowside { border-left: 1px solid var(--line); background: var(--panel); overflow: auto; padding: 20px 18px 30px; }
+.checks { list-style: none; margin: 0; padding: 0; font-size: 13.5px; }
+.checks li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px dashed var(--line); }
+.checks li:first-child { border-top: 0; }
+.checks .ok { color: var(--keep); font-weight: 700; } .checks .bad { color: var(--excl); font-weight: 700; }
+.fgrid { display: grid; grid-template-columns: 1fr 86px; gap: 6px 8px; align-items: center; font-size: 13px; }
+.fgrid input.in { padding: 5px 8px; font-size: 13px; }
+.fgrid .full { grid-column: 1 / -1; }
+.fgrid .lbl { color: var(--ink2); }
+.edited { border-color: var(--unsure) !important; background: var(--unsure-soft) !important; }
+.losslist { font-size: 13px; }
+.losslist div { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px dashed var(--line); }
+@media (max-width: 1180px) { .main.ft { grid-template-columns: 220px minmax(0, 1fr) 340px; } .flowpage { grid-template-columns: 1fr; } }
+@media (max-width: 960px) { .main.ft { grid-template-columns: 1fr; } .viewer { min-height: 75vh; } .side.ft { overflow: visible; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(() => {
+'use strict';
+
+/* ================= 文字（中 / 英） ================= */
+const I18N = {
+  zh: {
+    appName: '全文筛选助手', appSub: '范围综述 · 全文筛选和 PRISMA 流程图',
+    heroP: '接着第一轮：导入保留下来的记录和全文 PDF，一篇篇读全文，决定纳入还是排除；最后自动画出 PRISMA 流程图。文件只在你自己的浏览器里。',
+    s1: '导入要读全文的记录',
+    s1p: '推荐：把第一轮用的 bib 文件和“摘要筛选助手”导出的进度备份（JSON）一起拖进来，自动挑出第一轮保留的记录，流程图前半段的数字也会自动填好。也可以只导入第一轮导出的“保留进入全文.bib”。',
+    dropRec: '把 bib 文件和进度备份拖到这里', pickFiles: '选择文件', pickDir: '选择文件夹',
+    s2: '导入全文 PDF', s2p: '选几个 PDF，或者整个文件夹。文件名里有引用键、DOI 或者题目，就能自动对上；对不上的，读的时候手动指一下。',
+    dropPdf: '把 PDF 或文件夹拖到这里', pickPdf: '选择 PDF',
+    s3: '确认纳入和排除标准', s3p: '从第一轮的进度备份里带过来，可以修改。排除时只从排除标准（EC）里选理由；读全文碰到原来的排除标准管不到的情况（比如正文不是英文），就补一条 EC，加在最后，方法里写明是第二轮加的。',
+    s4: '开始读全文', s4p: '记录、PDF 和进度都存在这个浏览器里，关掉再打开会接着上次。',
+    startBtn: '开始读全文（{0} 篇）', continueBtn: '继续（已判断 {0} / {1}）', needRec: '先导入记录',
+    recs: '条', total: '合计', dupFound: '去掉重复 {0} 条，剩 {1} 条',
+    r1Ok: '第一轮进度：对上 {0} 条，排除 {1}、保留 {2}', r1Unres: '还有 {0} 条第一轮没有定（没筛完或者分歧没统一），可以先回摘要筛选助手处理',
+    r1Bad: '这个进度备份和导入的 bib 对不上（只对上 {0} 条）：请拖入第一轮用的同一批 bib', r1None: '没有第一轮的进度备份，这些 bib 里的全部记录都算要读全文的。如果它们是第一轮的原始 bib，请把进度备份也拖进来。',
+    toRead: '要读全文：{0} 篇', jsonBad: '{0} 不是摘要筛选助手的进度备份', clearAll: '清空重新导入', parseFail: '没有从 {0} 里读到记录', noFile: '没有找到可以导入的文件',
+    pdfStat: 'PDF 已对上 {0} / {1} 篇', pdfMissing: '还差 {0} 篇没有 PDF', pdfLoose: '{0} 个 PDF 没对上任何记录', clearPdf: '清空 PDF',
+    noIdb: '这个浏览器不能长期保存 PDF：关掉页面后要重新导入 PDF（判断结果会保留）。',
+    icLab: '纳入标准（IC）', ecLab: '排除标准（EC）', icPh: 'IC1 写作者用 AI 写作：…', ecPh: 'EC1 没有写作者参与：…', fillEx: '填入示例（AI 写作工具）',
+    judged: '已判断', incl: '纳入', excl: '排除', nr: '没拿到全文', todo: '未判断',
+    tAll: '全部', tTodo: '未判断', tIncl: '纳入', tExcl: '排除', tNr: '没拿到全文', tNoPdf: '缺 PDF', tStar: '星标', tNoReason: '缺理由', searchPh: '搜索题目、摘要、备注', noItems: '这里没有记录',
+    btnFlow: '流程图', btnExport: '导出', btnTeam: '多人筛选', more: '更多',
+    btnSettings: '设置', btnCrit: '标准', btnGuide: '使用说明', langSwitch: 'English', menuHome: '回到导入页', langBtn: 'EN',
+    inclBtn: '纳入', exclBtn: '排除', nrBtn: '没拿到全文', exclReason: '排除理由',
+    pickReason: '选一条排除标准，作为主要理由', noEC: '还没有写排除标准：先在“标准”里列出 EC，才能记排除理由',
+    notePh: '备注：证据在第几页、哪一段；为什么这样判（边界案例写一句）', nrNotePh: '怎么找过：比如图书馆没订、出版社页面打不开、联系作者没有回复',
+    nrQuick: ['图书馆没订', '出版社页面打不开', '联系作者没有回复', '馆际互借没成功'],
+    star: '标星（拿不准）', undo: '撤销', prev: '上一条', next: '下一条',
+    stampI: '纳入', stampX: '排除', stampN: '没拿到全文', stampNoReason: '还没选理由',
+    abstract: '摘要', r1Note: '第一轮的备注', r1Star: '第一轮标了星', keyLab: '引用键', doiLab: 'DOI',
+    noPdfTitle: '还没有这篇的全文', noPdfP: '先去找全文：学校图书馆、出版社网站、作者主页、Google Scholar；还是没有，就联系作者或者申请馆际互借。实在拿不到，点下面的“没拿到全文”，写一句找过哪些地方。',
+    choosePdf: '选择这篇的 PDF', fromLoose: '从没对上的 PDF 里选…', openDoi: '打开 DOI', searchScholar: '在 Google Scholar 搜', removePdf: '换一个 PDF',
+    critTitle: '筛选标准', critCount: '纳入 {0} · 排除 {1}', editCrit: '修改', critEmpty: '还没有写标准。',
+    critModal: '纳入和排除标准', critSub: '全文阶段改了标准，方法里要写明改了什么。', save: '保存',
+    keysHint: '1–9：排除，记下第几条 EC',
+    allDone: '全部判断完了，点右上角“流程图”看看', noReasonWarn: '有 {0} 篇排除了但没选理由，流程图里要写理由',
+    exportTitle: '导出', exportSub: '结果随时可以导出。',
+    exCsv: '全文筛选结果表（CSV）', exCsvD: '每篇一行：判断、理由、备注、星标、是否有 PDF。Excel 可以直接打开。',
+    exBib: '纳入的文献（.bib）', exBibD: '只含最终纳入的文献，下一步编码时用。',
+    exJson: '进度备份（JSON）', exJsonD: '换电脑或换浏览器时，先导入同样的记录，再导入这个文件接着读。PDF 不在备份里，要重新导入。',
+    exImp: '导入进度备份', download: '下载', impOk: '进度已导入', impBad: '这个进度文件和当前的记录对不上',
+    copy: '复制', copied: '已复制',
+    // 流程图页
+    flowTitle: 'PRISMA 流程图', back: '← 回去读全文', flowLang: '流程图的语言', showTA: '列出第一轮每条排除理由的篇数（可选）', omitNR: '全文都拿到了时，省掉“没有获取到全文”这一格', chkTA2: '筛选的 − 第一轮排除 = 读了全文的',
+    checksTitle: '核对：每一层的数字对得上吗', chkId: '检索到的 − 重复 = 筛选的', chkTA: '筛选的 − 第一轮排除 = 要找全文的', chkNR: '要找全文的 − 没拿到 = 读了全文的',
+    chkFT: '读了全文的 − 全文排除 = 纳入的', chkReasons: '全文排除的理由加起来 = 全文排除', chkTAR: '第一轮排除的理由加起来 = 第一轮排除', chkTodo: '还没判断完：{0} 篇',
+    editTitle: '改数字和文字', editHint: '数字默认按筛选记录自动算；改过的会标黄。手动改的数字，记得在记录里也能找到出处。', resetFlow: '恢复自动数字',
+    dbNames: '数据库', fDups: '重复记录', fScreened: '筛选的记录', fTAExcl: '第一轮排除', fSought: '要找全文的', fNR: '没拿到全文', fAssessed: '读了全文的', fFTExcl: '全文排除', fIncl: '纳入的研究',
+    dlSvg: '下载 SVG', dlPng: '下载 PNG', copyNums: '复制数字', write33: '写进 3.3 的句子', figNo: '图号', unknownR1: '没有第一轮的数据：前半段的数字请对照摘要筛选助手“导出”里的流程图数字填上。',
+    noReason: '没写理由',
+    // 设置、多人
+    setTitle: '设置', tabFiles: '记录和 PDF', tabTeam: '审阅人', tabLang: '语言', tabHelp: '使用说明', uiLang: '界面语言',
+    teamQ: '几个人读？', teamSolo: '只有我', teamMulti: '两个人或更多', ridLab: '我的编号', ridPh: '比如 R1 或名字缩写',
+    teamHint: '投稿的论文一般要两个人独立读全文；课程综述、开题、PhD Qualifying Examination，一个人读也可以。',
+    teamHint2: '每个人导入同样的记录和 PDF、各读一遍；读完在“多人筛选”里导出自己的结果，再导入别人的。',
+    needRid: '先填上你的编号', modeSelf: '我的判断', modeTeam: '统一结果',
+    teamTitle: '多人筛选（全文）', teamSub: '每个人独立读完后，导出自己的结果发给对方；导入对方的结果，工具会算出一致率，并把分歧单独列出来，大家一起统一。',
+    exMine: '导出我的结果（给合作者）', exMineD: '你对每篇的判断、理由和备注，文件名带你的编号。',
+    impOthers: '导入合作者的结果', impOthersD: '对方用“导出我的结果”得到的文件，可以一次选几个。',
+    reviewers: '审阅人', me: '我', screenedN: '已判断 {0} 篇', remove: '移除',
+    agreeTitle: '一致性（可以写进论文）', agreeNone: '导入至少一位合作者的结果后，这里会算出一致率。',
+    startTeam: '开始统一分歧（{0} 篇）', allResolved: '分歧都统一好了，去看看',
+    tConf: '有分歧', tUnres: '待统一', tAgree: '一致', tPart: '没读完',
+    teamProg: '分歧已统一 {0} / {1}', finalN: '最终纳入 {0} · 排除 {1} · 没拿到 {2}',
+    conflictStamp: '有分歧，待统一', agreedStamp: '一致', rvBox: '各人的判断', notYet: '还没判断', finalLab: '最终',
+    impMineSkip: '{0} 是你自己的编号，跳过了', importedRv: '已导入 {0} 的结果：对上 {1} 篇', impNotMatched: '{0} 篇对不上（导入的记录可能不一样）',
+    impBadTeam: '这不是全文筛选的结果文件', teamDone: '分歧都统一好了',
+    footer: '配套工具 · 栗子悟了《从零写一篇范围综述》', restored: '已恢复上次的记录和进度',
+    looseTitle: '没对上的 PDF', looseSub: '这些 PDF 没有自动对上任何记录。读到对应的那篇时，在“从没对上的 PDF 里选”里指定就行。',
+    kTitle: '快捷键', guideMore: '更详细的说明，见随工具附带的《全文筛选助手_使用说明.md》。',
+    kIncl: '纳入', kExcl: '排除（没选理由时会提醒）', kNum: '排除，并记下第 n 条排除标准（ECn）', kNr: '没拿到全文', kUndo: '撤销上一次判断', kNav: '上一篇 / 下一篇', kStar: '标星', kNote: '写备注', kEsc: '关掉弹窗 / 离开备注',
+    kFocus: '点进 PDF 以后快捷键不起作用，点一下右边的空白处就好。',
+  },
+  en: {
+    appName: 'Full-Text Screener', appSub: 'Scoping review · full-text screening and the PRISMA flow diagram',
+    heroP: 'Pick up where round one ended: import the records you kept and their full-text PDFs, read each one, and decide include or exclude. The PRISMA flow diagram is drawn for you. Everything stays in your browser.',
+    s1: 'Import the records to read',
+    s1p: 'Recommended: drop in the same .bib files you used in round one together with the progress backup (JSON) from the Abstract Screener. The kept records are picked out, and the top of the flow diagram fills itself in. Or import only "kept-for-full-text.bib" from round one.',
+    dropRec: 'Drop .bib files and the progress backup here', pickFiles: 'Choose files', pickDir: 'Choose a folder',
+    s2: 'Import the full-text PDFs', s2p: 'Choose PDFs or a whole folder. File names containing the citation key, DOI or title are matched automatically; assign the rest by hand while reading.',
+    dropPdf: 'Drop PDFs or a folder here', pickPdf: 'Choose PDFs',
+    s3: 'Check your inclusion and exclusion criteria', s3p: 'Carried over from the round-one backup; edit if needed. Exclusion reasons come only from the exclusion criteria (EC). If a full text raises a case no EC covers (say, a body not in English), add an EC at the end and report in your methods that it was added in round two.',
+    s4: 'Start reading', s4p: 'Records, PDFs and progress are saved in this browser; close it and pick up where you left off.',
+    startBtn: 'Start reading ({0})', continueBtn: 'Continue ({0} / {1} decided)', needRec: 'Import records first',
+    recs: 'records', total: 'Total', dupFound: '{0} duplicates removed, {1} left',
+    r1Ok: 'Round-one progress: {0} matched, {1} excluded, {2} kept', r1Unres: '{0} records have no round-one decision yet (unscreened or unresolved); you may want to finish them in the Abstract Screener',
+    r1Bad: 'This backup does not match the .bib files (only {0} matched). Drop in the same .bib files you used in round one.', r1None: 'No round-one backup: every record in these files counts as a full-text candidate. If these are your original round-one files, add the progress backup too.',
+    toRead: 'To read: {0}', jsonBad: '{0} is not a progress backup from the Abstract Screener', clearAll: 'Clear and start over', parseFail: 'No records found in {0}', noFile: 'No files to import',
+    pdfStat: 'PDFs matched: {0} / {1}', pdfMissing: '{0} still without a PDF', pdfLoose: '{0} PDFs matched no record', clearPdf: 'Clear PDFs',
+    noIdb: 'This browser cannot keep PDFs: after closing the page, import the PDFs again (your decisions are kept).',
+    icLab: 'Inclusion criteria (IC)', ecLab: 'Exclusion criteria (EC)', icPh: 'IC1 Writers write with AI: …', ecPh: 'EC1 No writers involved: …', fillEx: 'Fill in the example (AI writing tools)',
+    judged: 'Decided', incl: 'Included', excl: 'Excluded', nr: 'Not retrieved', todo: 'To do',
+    tAll: 'All', tTodo: 'To do', tIncl: 'Included', tExcl: 'Excluded', tNr: 'Not retrieved', tNoPdf: 'No PDF', tStar: 'Starred', tNoReason: 'No reason', searchPh: 'Search titles, abstracts, notes', noItems: 'Nothing here',
+    btnFlow: 'Flow diagram', btnExport: 'Export', btnTeam: 'Team screening', more: 'More',
+    btnSettings: 'Settings', btnCrit: 'Criteria', btnGuide: 'How to use', langSwitch: '中文', menuHome: 'Back to import', langBtn: '中文',
+    inclBtn: 'Include', exclBtn: 'Exclude', nrBtn: 'Full text not retrieved', exclReason: 'Reason',
+    pickReason: 'Pick one exclusion criterion as the main reason', noEC: 'No exclusion criteria yet: list your ECs under Criteria to record reasons',
+    notePh: 'Note: page and section of the evidence; why you decided this way (a line for borderline cases)', nrNotePh: 'Where you looked: e.g. no library access, publisher page down, no reply from the authors',
+    nrQuick: ['No library access', 'Publisher page down', 'No reply from the authors', 'Interlibrary loan failed'],
+    star: 'Star (unsure)', undo: 'Undo', prev: 'Previous', next: 'Next',
+    stampI: 'Included', stampX: 'Excluded', stampN: 'Not retrieved', stampNoReason: 'No reason yet',
+    abstract: 'Abstract', r1Note: 'Round-one note', r1Star: 'Starred in round one', keyLab: 'Key', doiLab: 'DOI',
+    noPdfTitle: 'No full text yet', noPdfP: 'Find it first: your library, the publisher\'s site, the authors\' pages, Google Scholar; if that fails, email the authors or request an interlibrary loan. If you really cannot get it, click "Full text not retrieved" and note where you looked.',
+    choosePdf: 'Choose the PDF for this record', fromLoose: 'Pick from unmatched PDFs…', openDoi: 'Open DOI', searchScholar: 'Search Google Scholar', removePdf: 'Replace the PDF',
+    critTitle: 'Criteria', critCount: '{0} inclusion · {1} exclusion', editCrit: 'Edit', critEmpty: 'No criteria yet.',
+    critModal: 'Inclusion and exclusion criteria', critSub: 'If you change the criteria at the full-text stage, report what changed in your methods.', save: 'Save',
+    keysHint: '1–9: exclude with ECn',
+    allDone: 'All decided. Click "Flow diagram" at the top right.', noReasonWarn: '{0} excluded without a reason; the flow diagram needs reasons',
+    exportTitle: 'Export', exportSub: 'Export your results at any time.',
+    exCsv: 'Full-text results (CSV)', exCsvD: 'One row per record: decision, reason, note, star, whether a PDF is attached. Opens in Excel.',
+    exBib: 'Included studies (.bib)', exBibD: 'Only the studies finally included, for data charting next.',
+    exJson: 'Progress backup (JSON)', exJsonD: 'To continue elsewhere: import the same records, then this file. PDFs are not in the backup; import them again.',
+    exImp: 'Import a progress backup', download: 'Download', impOk: 'Progress imported', impBad: 'This progress file does not match the current records',
+    copy: 'Copy', copied: 'Copied',
+    flowTitle: 'PRISMA flow diagram', back: '← Back to reading', flowLang: 'Diagram language', showTA: 'List the round-one exclusion reasons too (optional)', omitNR: 'When every full text was retrieved, leave out the "not retrieved" box', chkTA2: 'screened − round-one excluded = assessed',
+    checksTitle: 'Check: does every level add up?', chkId: 'identified − duplicates = screened', chkTA: 'screened − round-one excluded = sought', chkNR: 'sought − not retrieved = assessed',
+    chkFT: 'assessed − full-text excluded = included', chkReasons: 'full-text reasons add up to full-text excluded', chkTAR: 'round-one reasons add up to round-one excluded', chkTodo: 'Not decided yet: {0}',
+    editTitle: 'Edit numbers and labels', editHint: 'Numbers come from your screening records; edited fields turn yellow. Any number you type should still be traceable in your records.', resetFlow: 'Reset to automatic',
+    dbNames: 'Databases', fDups: 'Duplicates', fScreened: 'Screened', fTAExcl: 'Round-one excluded', fSought: 'Sought', fNR: 'Not retrieved', fAssessed: 'Assessed', fFTExcl: 'Full-text excluded', fIncl: 'Included',
+    dlSvg: 'Download SVG', dlPng: 'Download PNG', copyNums: 'Copy numbers', write33: 'Sentence for 3.3', figNo: 'Figure', unknownR1: 'No round-one data: fill in the top numbers from the flow-diagram numbers in the Abstract Screener\'s Export window.',
+    noReason: 'No reason given',
+    setTitle: 'Settings', tabFiles: 'Records & PDFs', tabTeam: 'Reviewers', tabLang: 'Language', tabHelp: 'How to use', uiLang: 'Interface language',
+    teamQ: 'How many reviewers?', teamSolo: 'Just me', teamMulti: 'Two or more', ridLab: 'My reviewer ID', ridPh: 'e.g. R1 or your initials',
+    teamHint: 'Papers for publication usually need two independent reviewers at the full-text stage; for a course review, a proposal or a PhD Qualifying Examination, one is fine.',
+    teamHint2: 'Each reviewer imports the same records and PDFs and reads on their own; then, under "Team screening", export your results and import the others\'.',
+    needRid: 'Enter your reviewer ID first', modeSelf: 'My decisions', modeTeam: 'Consensus',
+    teamTitle: 'Team screening (full text)', teamSub: 'After reading independently, export your results and send them to the others. Import theirs: the tool computes agreement and lists the disagreements for you to resolve together.',
+    exMine: 'Export my results (for collaborators)', exMineD: 'Your decision, reason and note for every record; the file name carries your ID.',
+    impOthers: 'Import collaborators\' results', impOthersD: 'Files they exported with "Export my results"; you can select several.',
+    reviewers: 'Reviewers', me: 'me', screenedN: '{0} decided', remove: 'Remove',
+    agreeTitle: 'Agreement (for your paper)', agreeNone: 'Import at least one collaborator\'s results to see agreement.',
+    startTeam: 'Resolve disagreements ({0})', allResolved: 'All disagreements resolved: review',
+    tConf: 'Disagreements', tUnres: 'To resolve', tAgree: 'Agreed', tPart: 'Incomplete',
+    teamProg: 'Disagreements resolved {0} / {1}', finalN: 'Final: included {0} · excluded {1} · not retrieved {2}',
+    conflictStamp: 'Disagreement: to resolve', agreedStamp: 'Agreed', rvBox: 'Each reviewer', notYet: 'not decided', finalLab: 'Final',
+    impMineSkip: '{0} is your own ID; skipped', importedRv: 'Imported {0}: {1} matched', impNotMatched: '{0} not matched (different records?)',
+    impBadTeam: 'This is not a full-text results file', teamDone: 'All disagreements resolved',
+    footer: 'Companion tool · Scoping Review from Scratch (Aha Chestnut)', restored: 'Restored your records and progress',
+    looseTitle: 'Unmatched PDFs', looseSub: 'These PDFs matched no record. When you reach the right record, pick one under "Pick from unmatched PDFs".',
+    kTitle: 'Keyboard shortcuts', guideMore: 'For details, see the guide that comes with the tool (全文筛选助手_使用说明.md).',
+    kIncl: 'Include', kExcl: 'Exclude (you are reminded to pick a reason)', kNum: 'Exclude with exclusion criterion n (ECn)', kNr: 'Full text not retrieved', kUndo: 'Undo the last decision', kNav: 'Previous / next', kStar: 'Star', kNote: 'Write a note', kEsc: 'Close dialog / leave the note',
+    kFocus: 'Shortcuts pause while the PDF has focus; click an empty spot on the right to resume.',
+  },
+};
+const GUIDE = {
+  zh: [
+    '<b>导入记录</b>：推荐把第一轮用的 bib 文件和摘要筛选助手导出的进度备份一起拖进来，自动挑出第一轮保留的记录；也可以只导入“保留进入全文.bib”。',
+    '<b>导入全文</b>：拖入 PDF 或整个文件夹，按文件名里的引用键、DOI、题目自动对上。没对上的，读到那篇时手动指定。',
+    '<b>读全文</b>：中间是 PDF，右边是这篇的信息和标准。先看方法：谁参与、用什么工具、做了什么评估；再扫结果。按 → 纳入，按 ← 排除并选一个主要理由（数字键）；拿不到全文的按 G，写一句找过哪些地方。',
+    '<b>理由</b>：每篇排除只记一个主要理由，从排除标准（EC）里选：几条都沾边时，记最直接的那一条，事先约定、前后一致。原来的 EC 管不到的，补一条 EC。证据在第几页，顺手写进备注。',
+    '<b>流程图</b>：点“流程图”，数字按筛选记录自动填好，可以切换中英文、核对每层数字、下载 SVG 或 PNG，还有一句可以写进 3.3 的话。',
+    '<b>多人</b>：投稿的论文一般要两个人独立读。开始时选“两个人或更多”，读完在“多人筛选”里导出自己的结果、导入别人的，再一起统一分歧。',
+    '<b>保存</b>：记录、PDF 和进度存在这个浏览器里，关掉再打开会接着上次。换电脑之前，在“导出”里下载进度备份。',
+  ],
+  en: [
+    '<b>Import records</b>: drop in your round-one .bib files with the progress backup from the Abstract Screener, and the kept records are picked out; or import only "kept-for-full-text.bib".',
+    '<b>Import full texts</b>: drop PDFs or a folder; they are matched by the citation key, DOI or title in the file name. Assign the rest by hand while reading.',
+    '<b>Read</b>: the PDF is in the middle, the record and criteria on the right. Read the methods first: who took part, which tool, what evaluation; then skim the results. Press → to include, ← to exclude and pick one main reason (number keys); press G when you cannot get the full text, and note where you looked.',
+    '<b>Reasons</b>: record one main reason per excluded report, always an exclusion criterion (EC). If several apply, take the most direct one, as agreed beforehand. If no EC covers the case, add one. Note the page of the evidence.',
+    '<b>Flow diagram</b>: click "Flow diagram". Numbers are filled from your records; switch the language, check each level, download SVG or PNG, and copy a sentence for 3.3.',
+    '<b>Team</b>: papers for publication usually need two independent reviewers. Choose "Two or more" at the start; afterwards export your results under "Team screening", import the others\' and resolve disagreements together.',
+    '<b>Saving</b>: records, PDFs and progress are saved in this browser. Before switching computers, download a progress backup under "Export".',
+  ],
+};
+// 流程图上的文字：跟着“流程图语言”，不跟界面语言
+const FL = {
+  zh: { idPhase: '识别', scPhase: '筛选', inPhase: '纳入', ident: '从数据库检索到的记录：', removed: '筛选前去掉的记录：', dups: '重复记录', screened: '题目和摘要筛选的记录',
+    taExcl: '排除的记录', sought: '需要获取全文的报告', nr: '没有获取到全文的报告', assessed: '阅读全文评估的报告', ftExcl: '排除的报告', incl: '纳入综述的研究',
+    n: v => `（n = ${v}）`, colon: '：', db: '数据库' },
+  en: { idPhase: 'Identification', scPhase: 'Screening', inPhase: 'Included', ident: 'Records identified from:', removed: 'Records removed before screening:', dups: 'Duplicate records', screened: 'Records screened',
+    taExcl: 'Records excluded', sought: 'Reports sought for retrieval', nr: 'Reports not retrieved', assessed: 'Reports assessed for eligibility', ftExcl: 'Reports excluded', incl: 'Studies included in review',
+    n: v => ` (n = ${v})`, colon: ':', db: 'Databases' },
+};
+const LS = 'ft-screener:';
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(LS + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(LS + k, JSON.stringify(v)); } catch (e) { /* 存储满了或被禁用 */ } },
+  del(k) { try { localStorage.removeItem(LS + k); } catch (e) { /* 忽略 */ } },
+};
+// 记录、进度和 PDF 都放 IndexedDB（PDF 是二进制，localStorage 放不下）；用不了时退回 localStorage，PDF 就只在本次打开时有效
+const DB = (() => {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    if (!window.indexedDB) { rej(new Error('no indexedDB')); return; }
+    const r = indexedDB.open('ft-screener', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const run = (mode, fn) => open().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('kv', mode); const q = fn(tx.objectStore('kv'));
+    tx.oncomplete = () => res(q ? q.result : undefined); tx.onerror = () => rej(tx.error);
+  }));
+  return {
+    ok: true,
+    async get(k) { try { return await run('readonly', s => s.get(k)); } catch (e) { DB.ok = false; return store.get('db:' + k, undefined); } },
+    async set(k, v) { try { await run('readwrite', s => s.put(v, k)); } catch (e) { DB.ok = false; if (!(v instanceof Blob)) store.set('db:' + k, v); } },
+    async del(k) { try { await run('readwrite', s => s.delete(k)); } catch (e) { store.del('db:' + k); } },
+  };
+})();
+let LANG = store.get('lang', (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
+const t = (k, ...a) => { let s = (I18N[LANG][k] ?? I18N.zh[k] ?? k); a.forEach((v, i) => { s = s.split('{' + i + '}').join(v); }); return s; };
+
+const EXAMPLE = {
+  zh: {
+    ic: 'IC1 写作者用 AI 写作：写作者在写作过程中使用 AI 工具，工具生成或修改自然语言文本，或者给出反馈\nIC2 有实证评估：研究中有写作者参与的评估，例如实验、现场部署、访谈或问卷\nIC3 文献类型和年份：2018 年以来的期刊论文，或者正式论文集里的完整会议论文（扩展摘要、海报等不算），英文全文\nIC4 需要进一步阅读：题目和摘要看不出是否满足以上标准的，保留到全文阶段再判断',
+    ec: 'EC1 没有写作者参与：只评价模型生成的文本、自动评分模型或语言模型本身\nEC2 工具不在范围内：编程工具、机器翻译，或者只纠拼写和语法、不改写内容的工具\nEC3 检测与诚信：研究的是 AI 生成文本的检测，或者学术诚信问题\nEC4 不是实证研究：社论、观点文章、综述\nEC5 词义不符：检索词用成了别的意思，例如客服机器人、机器人书写、写入数据库\nEC6 重复报告：同一项研究的几篇报告，只保留信息最全的一篇',
+  },
+  en: {
+    ic: 'IC1 Writers write with AI: writers use an AI tool during writing; the tool generates or modifies natural-language text, or gives feedback\nIC2 Empirical evaluation: the study evaluates the tool with writers, e.g. an experiment, field deployment, interviews or surveys\nIC3 Publication type and year: journal articles or full papers in main conference proceedings (not extended abstracts or posters) since 2018, full text in English\nIC4 Requires further reading: when the title and abstract do not show whether the criteria are met, keep the record for full-text reading',
+    ec: 'EC1 No writers involved: only evaluates model-generated text, scoring models or the language model itself\nEC2 Tool out of scope: programming tools, machine translation, or tools that only correct spelling and grammar without rewriting\nEC3 Detection and integrity: studies AI-generated text detection or academic integrity\nEC4 Not empirical research: editorials, opinion pieces, reviews\nEC5 Different sense: search terms used in another sense, e.g. customer-service chatbots, robotic handwriting, writing to databases\nEC6 Duplicate report: several reports of the same study; keep only the most complete one',
+  },
+};
+
+/* ================= 状态 ================= */
+const S = {
+  files: [], r1: null, r1info: null, all: [], dups: [], records: [], byId: {}, sig: '', loadedSig: '',
+  crit: store.get('crit', { icText: '', ecText: '' }),
+  dec: {}, star: {}, note: {}, hist: [], others: {}, final: {},
+  pdf: {}, loose: [],
+  view: 'setup', mode: 'self', cur: 0, filter: 'all', q: '', needReason: false, critOpen: store.get('critOpen', true),
+  flow: Object.assign({ lang: LANG, showTA: false, omitNR: true, edit: {}, fig: '3.1' }, store.get('flow', {})),
+  settings: Object.assign({ multi: false, rid: '' }, store.get('settings', {})),
+};
+const multi = () => !!S.settings.multi;
+const myRid = () => String(S.settings.rid || '').trim() || 'R1';
+const BLOBS = new Map();   // PDF 的二进制：内存里留一份，换页时不用每次读库
+let curUrl = '';
+
+/* ================= bib 解析（和摘要筛选助手同一套，去重结果一致） ================= */
+const ACC = { '"': '̈', "'": '́', '`': '̀', '^': '̂', '~': '̃', '=': '̄', '.': '̇', u: '̆', v: '̌', H: '̋', c: '̧', k: '̨', r: '̊' };
+function clean(s) {
+  return String(s || '')
+    .replace(/\{\\([."'`^~=uvHckr])\s*\{?([A-Za-z])\}?\}/g, (m, a, c) => (c + ACC[a]).normalize('NFC'))
+    .replace(/\\([."'`^~=])\{?([A-Za-z])\}?/g, (m, a, c) => (c + ACC[a]).normalize('NFC'))
+    .replace(/\\([&%$#_{}])/g, '$1')
+    .replace(/---/g, '—').replace(/--/g, '–')
+    .replace(/\\[a-zA-Z]+\s*/g, '')
+    .replace(/[{}]/g, '').replace(/~/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+function parseFields(s) {
+  const f = {}; const n = s.length; let i = 0;
+  while (i < n) {
+    while (i < n && /[\s,]/.test(s[i])) i++;
+    let j = i; while (j < n && /[A-Za-z0-9_\-:.]/.test(s[j])) j++;
+    if (j === i) { i++; continue; }
+    const name = s.slice(i, j).toLowerCase(); i = j;
+    while (i < n && /\s/.test(s[i])) i++;
+    if (s[i] !== '=') continue;
+    i++;
+    let val = '';
+    for (;;) {
+      while (i < n && /\s/.test(s[i])) i++;
+      if (s[i] === '{') {
+        let d = 0, k = i;
+        for (; k < n; k++) { if (s[k] === '\\') { k++; continue; } if (s[k] === '{') d++; else if (s[k] === '}' && --d === 0) break; }
+        val += s.slice(i + 1, k); i = k + 1;
+      } else if (s[i] === '"') {
+        let d = 0, k = i + 1;
+        for (; k < n; k++) { if (s[k] === '\\') { k++; continue; } if (s[k] === '{') d++; else if (s[k] === '}') d--; else if (s[k] === '"' && d === 0) break; }
+        val += s.slice(i + 1, k); i = k + 1;
+      } else {
+        let k = i; while (k < n && /[^,\s#}]/.test(s[k])) k++;
+        val += s.slice(i, k); i = k;
+      }
+      while (i < n && /\s/.test(s[i])) i++;
+      if (s[i] === '#') { i++; continue; }
+      break;
+    }
+    f[name] = val;
+  }
+  return f;
+}
+function parseBib(text, file) {
+  const out = []; const n = text.length; let i = 0;
+  for (;;) {
+    const at = text.indexOf('@', i); if (at < 0) break;
+    let j = at + 1; while (j < n && /[A-Za-z]/.test(text[j])) j++;
+    const type = text.slice(at + 1, j).toLowerCase();
+    while (j < n && /\s/.test(text[j])) j++;
+    if (!type || text[j] !== '{') { i = at + 1; continue; }
+    let d = 0, k = j;
+    for (; k < n; k++) { if (text[k] === '\\') { k++; continue; } if (text[k] === '{') d++; else if (text[k] === '}' && --d === 0) break; }
+    const body = text.slice(j + 1, k); const raw = text.slice(at, k + 1); i = k + 1;
+    if (['comment', 'string', 'preamble'].includes(type)) continue;
+    const c = body.indexOf(','); if (c < 0) continue;
+    const key = body.slice(0, c).trim();
+    const f = parseFields(body.slice(c + 1));
+    const authors = clean(f.author).split(/\s+and\s+/i).filter(Boolean).map(a => {
+      if (!a.includes(',')) return a.trim();
+      const [last, ...rest] = a.split(','); return (rest.join(',').trim() + ' ' + last.trim()).trim();
+    });
+    out.push({
+      key, type, file, raw, uid: file + ':' + key,
+      title: clean(f.title), abstract: clean(f.abstract), authors,
+      venue: clean(f.journal || f.booktitle || f.series || f.publisher || ''),
+      year: (clean(f.year).match(/\d{4}/) || [''])[0],
+      keywords: clean(f.keywords || f.keyword || f.author_keywords || '').split(/\s*[;,]\s*/).filter(Boolean),
+      doi: clean(f.doi).toLowerCase().replace(/^https?:\/\/(dx\.)?doi\.org\//, ''),
+    });
+  }
+  return out;
+}
+const normT = s => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9一-鿿]/g, '');
+function hash(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16); }
+const base = name => String(name).split(/[\\/]/).pop();
+const baseUid = u => { const i = u.indexOf(':'); return i < 0 ? u : base(u.slice(0, i)) + u.slice(i); };
+
+/* ================= 标准 ================= */
+function critList(text, prefix) {
+  let n = 0;
+  return String(text || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+    n++;
+    const m = l.match(/^((?:IC|EC|I|E)\s*\d+)[\s.:：、)）-]+(.*)$/i);
+    return m ? { code: m[1].replace(/\s+/g, '').toUpperCase(), text: m[2].trim() } : { code: prefix + n, text: l };
+  });
+}
+const IC = () => critList(S.crit.icText, 'IC');
+const EC = () => critList(S.crit.ecText, 'EC');
+const shortName = text => { const m = String(text).match(/^(.{1,40}?)[：:]/); return m ? m[1].trim() : String(text).slice(0, 24); };
+// 排除理由：排除标准 EC，加上“不满足某条纳入标准”（代码沿用 IC 编号，排除时就表示“不满足”）
+// 排除理由只从排除标准（EC）里选：不满足某条纳入标准的情况，要有对应的 EC；原来的 EC 管不到的，补一条 EC
+const reasons = () => EC().map(e => ({ code: e.code, text: e.text }));
+const reasonLabel = (code, lang = LANG) => {
+  if (!code) return lang === 'zh' ? I18N.zh.noReason : I18N.en.noReason;
+  const c = EC().find(x => x.code === code);
+  const name = c ? shortName(c.text) : '';
+  return code + (name ? ' ' + name : '');
+};
+
+/* ================= 第一轮：从摘要筛选助手的进度备份里取判断 ================= */
+// 进度备份里的编号形如“文件路径:引用键”；按文件名（不带路径）+ 引用键对上，换了文件夹也能对上
+function r1Decisions() {
+  const p = S.r1; if (!p) return null;
+  const toMine = {};
+  S.all.forEach(r => r.uids.forEach(u => { toMine[baseUid(u)] = r.id; }));
+  const conv = obj => { const o = {}; let hit = 0; for (const [k, v] of Object.entries(obj || {})) { const id = toMine[baseUid(k)]; if (id) { o[id] = v; hit++; } } return [o, hit]; };
+  const [dec, hit] = conv(p.dec); const [final] = conv(p.final); const [note] = conv(p.note); const [star] = conv(p.star);
+  const others = Object.values(p.others || {}).map(o => conv(o.dec)[0]);
+  const team = others.length > 0;
+  const out = {};
+  S.all.forEach(r => {
+    if (team) {
+      if (final[r.id]) { out[r.id] = final[r.id]; return; }
+      const ds = [dec[r.id], ...others.map(o => o[r.id])];
+      if (ds.every(Boolean) && new Set(ds.map(d => d.d)).size === 1) out[r.id] = { d: ds[0].d, ec: ds.map(d => d.ec).find(Boolean) || '' };
+    } else if (dec[r.id]) out[r.id] = dec[r.id];
+  });
+  return { out, hit, total: Object.keys(p.dec || {}).length, note, star, team };
+}
+
+/* ================= 记录 ================= */
+function rebuild() {
+  const allRecs = S.files.flatMap(f => f.recs);
+  const byDoi = new Map(), byTitle = new Map(), kept = [], dups = [];
+  for (const r0 of allRecs) {
+    const r = Object.assign({}, r0, { files: [r0.file], uids: [r0.uid] });
+    const tk = normT(r.title) + '|' + r.year;
+    const hit = (r.doi && byDoi.get(r.doi)) || (normT(r.title).length > 12 && byTitle.get(tk));
+    if (hit) {
+      dups.push({ title: r.title, a: hit.files[0] + ' · ' + hit.key, b: r.file + ' · ' + r.key });
+      const files = [...new Set([...hit.files, r.file])], uids = [...hit.uids, r.uid];
+      if ((r.abstract || '').length > (hit.abstract || '').length) Object.assign(hit, r);
+      hit.files = files; hit.uids = uids; hit.merged = (hit.merged || 0) + 1;
+      continue;
+    }
+    kept.push(r); if (r.doi) byDoi.set(r.doi, r); byTitle.set(tk, r);
+  }
+  kept.forEach(r => { r.id = [...r.uids].sort()[0]; r.mk = r.doi ? 'doi:' + r.doi : 't:' + normT(r.title) + '|' + r.year; r.keys = r.uids.map(u => u.split(':').slice(1).join(':')); });
+  S.all = kept; S.dups = dups;
+  S.r1info = null;
+  let cands = kept;
+  if (S.r1) {
+    const R = r1Decisions();
+    const ok = R.total && R.hit >= Math.max(1, 0.9 * Math.min(R.total, kept.length));
+    if (ok) {
+      const ex = kept.filter(r => R.out[r.id]?.d === 'excl'), kp = kept.filter(r => R.out[r.id]?.d === 'keep');
+      const reasons1 = {}; ex.forEach(r => { const c = R.out[r.id].ec || ''; reasons1[c] = (reasons1[c] || 0) + 1; });
+      S.r1info = { ok: true, hit: R.hit, excl: ex.length, keep: kp.length, unres: kept.length - ex.length - kp.length, reasons: reasons1, note: R.note, star: R.star, team: R.team };
+      cands = kp;
+    } else S.r1info = { ok: false, hit: R.hit };
+  }
+  S.records = cands; S.byId = Object.fromEntries(cands.map(r => [r.id, r]));
+  S.sig = hash(cands.map(r => r.id).sort().join('|'));
+}
+
+/* ================= 进度保存 ================= */
+function save() {
+  if (!S.sig) return;
+  DB.set('p:' + S.sig, { dec: S.dec, star: S.star, note: S.note, others: S.others, final: S.final, hist: S.hist.slice(-500), cur: S.cur, mode: S.mode, at: Date.now() });
+}
+async function load() {
+  const p = await DB.get('p:' + S.sig);
+  Object.assign(S, { dec: {}, star: {}, note: {}, others: {}, final: {}, hist: [], cur: 0, mode: 'self', loadedSig: S.sig });
+  if (!p) return false;
+  Object.assign(S, { dec: p.dec || {}, star: p.star || {}, note: p.note || {}, others: p.others || {}, final: p.final || {}, hist: p.hist || [], cur: Math.min(p.cur || 0, Math.max(0, S.records.length - 1)) });
+  S.mode = p.mode === 'team' && hasTeam() ? 'team' : 'self';
+  return Object.keys(S.dec).length > 0;
+}
+const saveFiles = () => DB.set('files', { bibs: S.files.map(f => ({ name: f.name, text: f.text })), r1: S.r1 });
+const saveCrit = () => store.set('crit', S.crit);
+const saveSettings = () => store.set('settings', S.settings);
+const saveFlow = () => store.set('flow', S.flow);
+const savePdfIndex = () => DB.set('pdfindex', { pdf: S.pdf, loose: S.loose });
+
+/* ================= 工具函数 ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function toast(msg) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
+function download(name, text, type) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+const radio = (name, val, label, on) => `<label class="rd"><input type="radio" name="${name}" value="${val}" ${on ? 'checked' : ''}> ${label}</label>`;
+function downloadBlob(name, blob) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+}
+const ICON = '<svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="10" fill="#8a5a3b"/><path d="M10 7.5h10l5 5V25a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 9 25V9a1.5 1.5 0 0 1 1-1.5z" fill="#fff8ec"/><path d="M20 7.5v5h5" fill="none" stroke="#8a5a3b" stroke-width="1.4"/><path d="M12.5 15.5h8M12.5 18.5h8M12.5 21.5h5" stroke="#c9b39c" stroke-width="1.4" stroke-linecap="round"/><circle cx="24.5" cy="24.5" r="4.6" fill="#ffe27a" stroke="#8a5a3b" stroke-width="1.6"/><path d="M22.6 24.6l1.4 1.4 2.4-2.6" fill="none" stroke="#8a5a3b" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+const stats = () => {
+  let i = 0, x = 0, n = 0, nore = 0;
+  for (const r of S.records) { const d = S.dec[r.id]; if (d?.d === 'incl') i++; else if (d?.d === 'excl') { x++; if (!d.ec) nore++; } else if (d?.d === 'nr') n++; }
+  return { n: S.records.length, i, x, nr: n, nore, todo: S.records.length - i - x - n, pdf: S.records.filter(r => S.pdf[r.id]).length };
+};
+
+/* ================= 多人：一致性和分歧（判断有三种：纳入、排除、没拿到全文） ================= */
+const hasTeam = () => multi() && Object.keys(S.others).length > 0;
+const team = () => S.mode === 'team' && hasTeam();
+const reviewers = () => [{ rid: myRid(), me: true, dec: S.dec, note: S.note },
+  ...Object.entries(S.others).map(([rid, o]) => ({ rid, dec: o.dec || {}, note: o.note || {} }))];
+function status(id) {
+  const R = reviewers(); const ds = R.map(x => x.dec[id]?.d).filter(Boolean);
+  if (ds.length >= 2 && new Set(ds).size > 1) return 'conflict';
+  if (ds.length === R.length && ds.length) return 'agree';
+  return 'partial';
+}
+function finalOf(id) {
+  if (S.final[id]) return S.final[id];
+  if (status(id) !== 'agree') return null;
+  const R = reviewers();
+  return { d: R[0].dec[id].d, ec: R.map(x => x.dec[id]?.ec).find(Boolean) || '', auto: true };
+}
+const decOf = id => (hasTeam() ? finalOf(id) : S.dec[id]);
+function teamStats() {
+  let conf = 0, res = 0, agree = 0, part = 0, fi = 0, fx = 0, fn = 0;
+  for (const r of S.records) {
+    const st = status(r.id);
+    if (st === 'conflict') { conf++; if (S.final[r.id]) res++; } else if (st === 'agree') agree++; else part++;
+    const f = finalOf(r.id); if (f?.d === 'incl') fi++; else if (f?.d === 'excl') fx++; else if (f?.d === 'nr') fn++;
+  }
+  return { n: S.records.length, conf, res, agree, part, fi, fx, fn };
+}
+const CATS = ['incl', 'excl', 'nr'];
+function cohen(a, b) {
+  const ids = S.records.map(r => r.id).filter(id => a[id] && b[id]); const n = ids.length; if (!n) return null;
+  let ag = 0; const pa = {}, pb = {}, pairs = {};
+  ids.forEach(id => { const x = a[id].d, y = b[id].d; if (x === y) ag++; else pairs[x + '>' + y] = (pairs[x + '>' + y] || 0) + 1; pa[x] = (pa[x] || 0) + 1; pb[y] = (pb[y] || 0) + 1; });
+  const po = ag / n, pe = CATS.reduce((s, c) => s + ((pa[c] || 0) / n) * ((pb[c] || 0) / n), 0);
+  return { n, ag, po, k: pe >= 1 ? 1 : (po - pe) / (1 - pe), pairs };
+}
+function fleiss(R) {
+  const ids = S.records.map(r => r.id).filter(id => R.every(x => x.dec[id])); const N = ids.length, m = R.length; if (!N) return null;
+  let P = 0, uni = 0; const tot = {};
+  ids.forEach(id => { const cnt = {}; R.forEach(x => { const c = x.dec[id].d; cnt[c] = (cnt[c] || 0) + 1; tot[c] = (tot[c] || 0) + 1; });
+    P += (Object.values(cnt).reduce((s, v) => s + v * v, 0) - m) / (m * (m - 1)); if (Object.keys(cnt).length === 1) uni++; });
+  P /= N; const pe = CATS.reduce((s, c) => s + Math.pow((tot[c] || 0) / (N * m), 2), 0);
+  return { N, uni, k: pe >= 1 ? 1 : (P - pe) / (1 - pe) };
+}
+const catName = (c, lang = LANG) => ({ zh: { incl: '纳入', excl: '排除', nr: '没拿到全文' }, en: { incl: 'include', excl: 'exclude', nr: 'not retrieved' } }[lang][c]);
+function teamReport(lang = LANG) {
+  const R = reviewers(); if (R.length < 2) return '';
+  const zh = lang === 'zh', ts = teamStats(), f2 = v => v.toFixed(2), pc = v => (100 * v).toFixed(1);
+  const names = R.map(x => x.rid).join(zh ? '、' : ', '), done = ts.conf === ts.res;
+  if (R.length === 2) {
+    const c = cohen(R[0].dec, R[1].dec); if (!c) return '';
+    const [a, b] = [R[0].rid, R[1].rid];
+    const pat = Object.entries(c.pairs).sort((p, q) => q[1] - p[1]).map(([k, n]) => { const [x, y] = k.split('>'); return zh ? `${a} ${catName(x, 'zh')}、${b} ${catName(y, 'zh')} ${n} 篇` : `${a} ${catName(x, 'en')} / ${b} ${catName(y, 'en')}: ${n}`; }).join(zh ? '；' : '; ');
+    return zh
+      ? `两位审阅人（${names}）独立阅读了全部 ${ts.n} 篇全文。两人都判断过的 ${c.n} 篇中，判断一致 ${c.ag} 篇（${pc(c.po)}%，Cohen's κ = ${f2(c.k)}）；有分歧 ${c.n - c.ag} 篇${pat ? `（${pat}）` : ''}，${done ? '全部经讨论统一。' : ts.res ? `已经讨论统一 ${ts.res} 篇。` : '待讨论统一。'}`
+      : `Two reviewers (${names}) independently assessed all ${ts.n} full texts. Of the ${c.n} both decided, they agreed on ${c.ag} (${pc(c.po)}%, Cohen's κ = ${f2(c.k)}). The ${c.n - c.ag} disagreements${pat ? ` (${pat})` : ''} ${done ? 'were all resolved by discussion.' : ts.res ? `are being resolved by discussion (${ts.res} so far).` : 'are yet to be resolved.'}`;
+  }
+  const fl = fleiss(R); if (!fl) return '';
+  return zh
+    ? `${R.length} 位审阅人（${names}）独立阅读了全部 ${ts.n} 篇全文。所有人都判断过的 ${fl.N} 篇中，全体一致 ${fl.uni} 篇（${pc(fl.uni / fl.N)}%，Fleiss' κ = ${f2(fl.k)}）。有分歧的 ${ts.conf} 篇，${done ? '全部经讨论统一。' : ts.res ? `已经讨论统一 ${ts.res} 篇。` : '待讨论统一。'}`
+    : `${R.length} reviewers (${names}) independently assessed all ${ts.n} full texts. Of the ${fl.N} all decided, all agreed on ${fl.uni} (${pc(fl.uni / fl.N)}%, Fleiss' κ = ${f2(fl.k)}). The ${ts.conf} disagreements ${done ? 'were all resolved by discussion.' : ts.res ? `are being resolved by discussion (${ts.res} so far).` : 'are yet to be resolved.'}`;
+}
+
+/* ================= PDF：导入、对上记录、存起来 ================= */
+const alnum = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+const STOP = new Set('the and for with from into using use how what when why are its our their this that via can does not but'.split(' '));
+const words = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter(w => w.length > 2 && !STOP.has(w));
+// 文件名 → 记录：先看引用键，再看 DOI，最后按题目里的词重合程度
+function matchPdf(fname) {
+  const stem = fname.replace(/\.pdf$/i, ''), a = alnum(stem), ws = new Set(words(stem));
+  for (const r of S.records) if (r.keys.some(k => alnum(k).length >= 4 && a.includes(alnum(k)))) return r;
+  for (const r of S.records) { const d = alnum(r.doi.split('/').slice(1).join('/')); if (d.length >= 5 && a.includes(d)) return r; }
+  let best = null, s1 = 0, s2 = 0;
+  for (const r of S.records) {
+    const tw = new Set(words(r.title)); if (!tw.size || !ws.size) continue;
+    const hit = [...ws].filter(w => tw.has(w)).length;
+    const score = hit < 3 ? 0 : hit / Math.min(tw.size, ws.size);   // 文件名里的词大多出现在题目里
+    if (score > s1) { s2 = s1; s1 = score; best = r; } else if (score > s2) s2 = score;
+  }
+  return s1 >= 0.75 && s1 - s2 >= 0.2 ? best : null;
+}
+async function addPdfs(list) {
+  let n = 0, hit = 0;
+  for (const it of list) {
+    const f = it.file || it; if (!/\.pdf$/i.test(f.name)) continue;
+    n++;
+    const r = matchPdf(f.name);
+    if (r) { await attachPdf(r.id, f); hit++; }
+    else if (!S.loose.some(x => x.name === f.name)) { S.loose.push({ name: f.name, size: f.size }); BLOBS.set('u:' + f.name, f); await DB.set('u:' + f.name, f); }
+  }
+  savePdfIndex();
+  if (n) toast((LANG === 'zh' ? `导入 ${n} 个 PDF，对上 ${hit} 个` : `${n} PDFs imported, ${hit} matched`));
+  refreshAfterPdf();
+}
+async function attachPdf(id, blob, name) {
+  const nm = name || blob.name || 'full-text.pdf';
+  const bk = 'pdf:' + id;
+  if (S.pdf[id] && S.pdf[id].bk !== bk) await DB.del(S.pdf[id].bk);
+  S.pdf[id] = { name: nm, size: blob.size, bk };
+  BLOBS.set(bk, blob); await DB.set(bk, blob);
+}
+async function takeLoose(id, name, quiet) {
+  const b = BLOBS.get('u:' + name) || await DB.get('u:' + name); if (!b) return;
+  await attachPdf(id, b, name);
+  S.loose = S.loose.filter(x => x.name !== name); BLOBS.delete('u:' + name); DB.del('u:' + name);
+  savePdfIndex(); if (!quiet) refreshAfterPdf();
+}
+async function pdfBlob(id) {
+  const bk = S.pdf[id]?.bk || 'pdf:' + id;
+  if (BLOBS.has(bk)) return BLOBS.get(bk);
+  const b = await DB.get(bk); if (b) BLOBS.set(bk, b); return b;
+}
+// 导入记录之前就拖进来的 PDF，记录到了以后再对一遍
+async function rematchLoose() {
+  for (const x of [...S.loose]) { const r = matchPdf(x.name); if (r && !S.pdf[r.id]) await takeLoose(r.id, x.name, true); }
+}
+async function clearPdfs() {
+  for (const x of Object.values(S.pdf)) await DB.del(x.bk);
+  for (const x of S.loose) await DB.del('u:' + x.name);
+  S.pdf = {}; S.loose = []; BLOBS.clear(); savePdfIndex(); refreshAfterPdf();
+}
+function refreshAfterPdf() { if (S.view === 'main') renderAll(); else if (S.view === 'setup') renderSetup(); if (modalKind === 'settings' || modalKind === 'loose') openModal(modalKind); }
+
+/* ================= 开始页 ================= */
+function teamControls(where) {
+  const nm = 'team_' + where;
+  return `<div class="teamrow"><span class="lab">${t('teamQ')}</span>${radio(nm, 'solo', t('teamSolo'), !multi())}${radio(nm, 'multi', t('teamMulti'), multi())}
+    ${multi() ? `<label class="rd">${t('ridLab')} <input class="in" data-ridinput="1" placeholder="${esc(t('ridPh'))}" value="${esc(S.settings.rid)}"></label>` : ''}</div>
+    <div class="hint">${t('teamHint')}${multi() ? ' ' + t('teamHint2') : ''}</div>`;
+}
+const pickRec = withId => `<label class="ghost pick">📄 ${t('pickFiles')}<input type="file" class="hidden" ${withId ? 'id="fileIn"' : ''} data-pick="rec" multiple accept=".bib,.bibtex,.txt,.json"></label>
+  <label class="ghost pick">📁 ${t('pickDir')}<input type="file" class="hidden" data-pick="recdir" webkitdirectory multiple></label>`;
+const pickPdf = withId => `<label class="ghost pick">📄 ${t('pickPdf')}<input type="file" class="hidden" ${withId ? 'id="pdfIn"' : ''} data-pick="pdf" multiple accept=".pdf,application/pdf"></label>
+  <label class="ghost pick">📁 ${t('pickDir')}<input type="file" class="hidden" ${withId ? 'id="pdfDirIn"' : ''} data-pick="pdfdir" webkitdirectory multiple></label>`;
+function recListHTML() {
+  if (!S.files.length && !S.r1) return '';
+  const tot = S.files.reduce((a, f) => a + f.recs.length, 0), I = S.r1info;
+  let r1line = '';
+  if (S.r1 && I?.ok) r1line = `<div class="okline"><span>✓ ${t('r1Ok', I.hit, I.excl, I.keep)}</span></div>` + (I.unres ? `<div class="warnline"><span>⚠︎ ${t('r1Unres', I.unres)}</span></div>` : '');
+  else if (S.r1 && S.files.length) r1line = `<div class="badline"><span>⚠︎ ${t('r1Bad', I?.hit || 0)}</span></div>`;
+  else if (S.r1) r1line = `<div><span>${esc(S.r1.name || 'backup.json')}</span><span>JSON</span></div>`;
+  else if (S.files.length) r1line = `<div class="hint" style="display:block">${t('r1None')}</div>`;
+  return `<div class="files">${S.files.map(f => `<div><span title="${esc(f.name)}">${esc(f.name)}</span><span>${f.recs.length} ${t('recs')}</span></div>`).join('')}
+    ${S.files.length > 1 ? `<div class="sum"><span>${t('total')}</span><span>${tot} ${t('recs')}</span></div><div><span>${t('dupFound', S.dups.length, S.all.length)}</span></div>` : ''}
+    ${S.r1 && S.files.length ? `<div><span>${esc(S.r1.name || 'backup.json')}</span><span>JSON</span></div>` : ''}
+    ${r1line}
+    ${S.records.length ? `<div class="sum"><span>${t('toRead', S.records.length)}</span><span></span></div>` : ''}
+    <div style="border:0"><button class="lnk" data-act="clearFiles">${t('clearAll')}</button></div></div>`;
+}
+function pdfListHTML() {
+  const s = stats(); if (!S.records.length) return '';
+  const total = Object.keys(S.pdf).length ? Object.values(S.pdf).reduce((a, x) => a + (x.size || 0), 0) : 0;
+  return `<div class="files"><div class="sum"><span>${t('pdfStat', s.pdf, s.n)}</span><span>${total ? fmtSize(total) : ''}</span></div>
+    ${s.n - s.pdf ? `<div><span>${t('pdfMissing', s.n - s.pdf)}</span></div>` : ''}
+    ${S.loose.length ? `<div class="warnline"><span>${t('pdfLoose', S.loose.length)}</span><button class="lnk" data-act="loose">${LANG === 'zh' ? '看看' : 'View'}</button></div>` : ''}
+    ${!DB.ok ? `<div class="warnline" style="display:block">${t('noIdb')}</div>` : ''}
+    ${s.pdf || S.loose.length ? `<div style="border:0"><button class="lnk" data-act="clearPdf">${t('clearPdf')}</button></div>` : ''}</div>`;
+}
+function critForm() {
+  return `<div class="lab2"><span class="ic">${t('icLab')}</span><button class="lnk" data-act="example">${t('fillEx')}</button></div>
+    <textarea class="ta" id="icText" placeholder="${esc(t('icPh'))}">${esc(S.crit.icText)}</textarea>
+    <div class="lab2"><span class="ec">${t('ecLab')}</span></div>
+    <textarea class="ta" id="ecText" style="min-height:130px" placeholder="${esc(t('ecPh'))}">${esc(S.crit.ecText)}</textarea>`;
+}
+function bindCritForm() {
+  const sync = () => { S.crit = { icText: $('#icText').value, ecText: $('#ecText').value }; saveCrit(); };
+  ['#icText', '#ecText'].forEach(s => { $(s).oninput = sync; });
+}
+function renderSetup() {
+  const st = S.records.length, s = stats(), done = s.i + s.x + s.nr;
+  const label = !st ? t('needRec') : (S.loadedSig === S.sig && done ? t('continueBtn', done, st) : t('startBtn', st));
+  $('#app').innerHTML = `
+  <div class="setup">
+    <div class="hero">${ICON.replace('34', '54').replace('34', '54')}<h1>${t('appName')}</h1><p>${t('heroP')}</p>
+      <div class="herobtns"><button class="ghost" data-act="settings">⚙ ${t('btnSettings')}</button><button class="ghost" data-act="guide">${t('btnGuide')}</button><button class="ghost" data-act="lang">${t('langBtn')}</button></div></div>
+    <div class="steps">
+      <section class="step">
+        <h2><span class="num">1</span>${t('s1')}</h2><p>${t('s1p')}</p>
+        <div class="drop" id="dropRec"><span>⬆︎ ${t('dropRec')}</span><div class="pickrow">${pickRec(true)}</div></div>
+        ${recListHTML()}
+      </section>
+      <section class="step">
+        <h2><span class="num">2</span>${t('s2')}</h2><p>${t('s2p')}</p>
+        <div class="drop" id="dropPdf"><span>⬆︎ ${t('dropPdf')}</span><div class="pickrow">${pickPdf(true)}</div></div>
+        ${pdfListHTML()}
+        <h2 style="margin-top:22px"><span class="num">3</span>${t('s3')}</h2><p>${t('s3p')}</p>
+        ${critForm()}
+      </section>
+      <section class="step wide">
+        <div class="left"><h2><span class="num">4</span>${t('s4')}</h2>${teamControls('s')}<p class="hint" style="margin:0">${t('s4p')}</p></div>
+        <button class="primary" data-act="start" ${st ? '' : 'disabled'}>${label}</button>
+      </section>
+    </div>
+    <div class="foot">${t('footer')}</div>
+  </div>`;
+  const dz = (el, fn) => { el.ondragover = e => { e.preventDefault(); el.classList.add('over'); }; el.ondragleave = () => el.classList.remove('over'); el.ondrop = async e => { e.preventDefault(); el.classList.remove('over'); fn(await filesFromDrop(e.dataTransfer)); }; };
+  dz($('#dropRec'), addRecFiles); dz($('#dropPdf'), addPdfs);
+  bindCritForm();
+}
+// 拖进来的可能是文件，也可能是文件夹：文件夹逐层读出里面的文件
+async function filesFromDrop(dt) {
+  const entries = [...(dt.items || [])].map(i => (i.webkitGetAsEntry ? i.webkitGetAsEntry() : null)).filter(Boolean);
+  if (!entries.length) return [...dt.files];
+  const out = [];
+  const walk = async (entry, path) => {
+    if (entry.isFile) { const f = await new Promise((res, rej) => entry.file(res, rej)); out.push({ file: f, path: path + f.name }); return; }
+    if (!entry.isDirectory) return;
+    const reader = entry.createReader();
+    for (;;) {
+      const batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+      if (!batch.length) break;
+      for (const e of batch) await walk(e, path + entry.name + '/');
+    }
+  };
+  for (const e of entries) await walk(e, '');
+  return out;
+}
+async function addRecFiles(list) {
+  let n = 0;
+  for (const it of list) {
+    const f = it.file || it, name = base(it.path || f.webkitRelativePath || f.name);
+    if (/\.pdf$/i.test(f.name)) continue;
+    if (/\.json$/i.test(f.name)) {
+      n++;
+      try { const p = JSON.parse(await f.text()); if (p.app === 'abs-screener' && p.dec) { S.r1 = { name, sig: p.sig, dec: p.dec, final: p.final || {}, others: p.others || {}, note: p.note || {}, star: p.star || {}, crit: p.crit || null }; } else toast(t('jsonBad', name)); }
+      catch (e) { toast(t('jsonBad', name)); }
+      continue;
+    }
+    if (!/\.(bib|bibtex|txt)$/i.test(f.name)) continue;
+    n++;
+    const text = await f.text(), recs = parseBib(text, name);
+    if (!recs.length) { toast(t('parseFail', name)); continue; }
+    S.files = S.files.filter(x => x.name !== name).concat([{ name, text, recs }]);
+  }
+  if (!n && list.length) toast(t('noFile'));
+  // 第一轮的标准还没填，就从进度备份里带过来
+  if (S.r1?.crit && !S.crit.icText.trim() && !S.crit.ecText.trim()) { S.crit = { icText: S.r1.crit.icText || '', ecText: S.r1.crit.ecText || '' }; saveCrit(); }
+  await afterFilesChanged();
+}
+function carryOver(old) {
+  const map = {}; S.records.forEach(r => r.uids.forEach(u => { map[baseUid(u)] = r.id; }));
+  const mv = obj => { const o = {}; for (const [k, v] of Object.entries(obj || {})) { const id = map[baseUid(k)]; if (id && !(id in o)) o[id] = v; } return o; };
+  ['dec', 'star', 'note', 'final', 'pdf'].forEach(k => { S[k] = Object.assign({}, mv(old[k]), S[k]); });
+  for (const [rid, o] of Object.entries(old.others || {})) S.others[rid] = { ...o, dec: Object.assign({}, mv(o.dec), S.others[rid]?.dec), note: Object.assign({}, mv(o.note), S.others[rid]?.note) };
+}
+async function afterFilesChanged() {
+  const old = { dec: S.dec, star: S.star, note: S.note, final: S.final, others: S.others, pdf: S.pdf };
+  rebuild(); saveFiles();
+  if (!S.records.length) { S.view = 'setup'; store.set('view', 'setup'); renderSetup(); if (modalKind === 'settings') openModal('settings'); return; }
+  await load(); carryOver(old); await rematchLoose(); save(); savePdfIndex();
+  if (S.view === 'main') renderMain(); else renderSetup();
+  if (modalKind === 'settings') openModal('settings');
+}
+
+/* ================= 阅读页 ================= */
+function visible() {
+  const q = S.q.trim().toLowerCase();
+  return S.records.map((r, i) => [r, i]).filter(([r]) => {
+    if (team()) {
+      const st = status(r.id);
+      if (S.filter === 'unres' && !(st === 'conflict' && !S.final[r.id])) return false;
+      if (S.filter === 'conf' && st !== 'conflict') return false;
+      if (S.filter === 'agree' && st !== 'agree') return false;
+      if (S.filter === 'part' && st !== 'partial') return false;
+    } else {
+      const d = S.dec[r.id];
+      if (S.filter === 'todo' && d) return false;
+      if (S.filter === 'incl' && d?.d !== 'incl') return false;
+      if (S.filter === 'excl' && d?.d !== 'excl') return false;
+      if (S.filter === 'nr' && d?.d !== 'nr') return false;
+      if (S.filter === 'nopdf' && S.pdf[r.id]) return false;
+      if (S.filter === 'star' && !S.star[r.id]) return false;
+      if (S.filter === 'noreason' && !(d?.d === 'excl' && !d.ec)) return false;
+    }
+    if (q && !(r.title + ' ' + r.abstract + ' ' + (S.note[r.id] || '') + ' ' + r.keys.join(' ')).toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+function topBar(extra) {
+  return `<header class="top">
+    <div class="brand">${ICON}<b>${t('appName')}</b>${multi() ? `<span class="ridchip" title="${esc(t('ridLab'))}">${esc(myRid())}</span>` : ''}</div>
+    ${extra}
+    <div class="tools">
+      ${S.view === 'flow' ? `<button class="tb" data-act="backMain">${t('back')}</button>` : `<button class="tb" data-act="flow">▦ ${t('btnFlow')}</button>`}
+      ${multi() ? `<button class="tb" data-act="team">${t('btnTeam')}</button>` : ''}
+      <button class="tb" data-act="export">${t('btnExport')}</button>
+      <div class="menu-wrap"><button class="tb icon" data-act="menu" title="${esc(t('more'))}" aria-label="${esc(t('more'))}">⋯</button>
+        <div class="menu hidden" id="menu">
+          <button data-act="settings">${t('btnSettings')}</button><button data-act="crit">${t('btnCrit')}</button><button data-act="guide">${t('btnGuide')}</button><button data-act="lang">${t('langSwitch')}</button>
+          <hr><button data-act="home">${t('menuHome')}</button>
+        </div></div>
+    </div>
+  </header>`;
+}
+function renderMain() {
+  S.view = 'main';
+  $('#app').innerHTML = `
+  <div class="shell">
+  ${topBar(`${hasTeam() ? `<div class="seg mini"><button data-mode="self" class="${team() ? '' : 'on'}">${t('modeSelf')}</button><button data-mode="team" class="${team() ? 'on' : ''}">${t('modeTeam')}</button></div>` : ''}<div class="prog" id="prog"></div>`)}
+  <div class="main ft">
+    <aside class="list"><div class="tabs" id="tabs"></div>
+      <div class="finds"><input class="search" id="q" placeholder="${esc(t('searchPh'))}" value="${esc(S.q)}"></div>
+      <div class="items" id="items"></div></aside>
+    <main class="viewer" id="viewer"></main>
+    <aside class="side ft" id="side"></aside>
+  </div>
+  </div>`;
+  $('#q').oninput = e => { S.q = e.target.value; renderList(); };
+  renderProg(); renderList(); renderViewer(); renderSide();
+}
+function renderProg() {
+  const el = $('#prog'); if (!el) return;
+  if (team()) {
+    const ts = teamStats(), w = ts.conf ? (100 * ts.res / ts.conf).toFixed(2) + '%' : '100%';
+    el.innerHTML = `<div class="nums"><span>${t('teamProg', `<b style="color:var(--ink)">${ts.res}</b>`, ts.conf)}</span><span>${t('finalN', ts.fi, ts.fx, ts.fn)}</span></div>
+      <div class="bar" style="background:var(--unsure-soft)"><i class="k" style="width:${w};background:var(--unsure)"></i></div>`;
+    return;
+  }
+  const s = stats(), pct = v => (s.n ? (100 * v / s.n) : 0).toFixed(2) + '%', done = s.i + s.x + s.nr;
+  el.innerHTML = `<div class="nums"><span>${t('judged')} <b style="color:var(--ink)">${done}</b> / ${s.n}</span>
+      <span><i class="dot k"></i>${s.i} <i class="dot x" style="margin-left:8px"></i>${s.x} <i class="dot n" style="margin-left:8px"></i>${s.nr}</span></div>
+    <div class="bar" title="${esc(`${t('incl')} ${s.i} · ${t('excl')} ${s.x} · ${t('nr')} ${s.nr} · ${t('todo')} ${s.todo}`)}"><i class="k" style="width:${pct(s.i)}"></i><i class="x" style="width:${pct(s.x)}"></i><i class="n" style="width:${pct(s.nr)}"></i></div>`;
+}
+function renderList() {
+  let tabs;
+  if (team()) {
+    const ts = teamStats();
+    tabs = [['unres', t('tUnres'), ts.conf - ts.res], ['conf', t('tConf'), ts.conf], ['agree', t('tAgree'), ts.agree], ['part', t('tPart'), ts.part], ['all', t('tAll'), ts.n]]
+      .filter(([k, , n]) => k === 'unres' || k === 'all' || n > 0 || S.filter === k);
+  } else {
+    const s = stats(), nStar = S.records.filter(r => S.star[r.id]).length;
+    tabs = [['all', t('tAll'), s.n], ['todo', t('tTodo'), s.todo], ['incl', t('tIncl'), s.i], ['excl', t('tExcl'), s.x], ['nr', t('tNr'), s.nr], ['nopdf', t('tNoPdf'), s.n - s.pdf], ['star', t('tStar'), nStar], ['noreason', t('tNoReason'), s.nore]]
+      .filter(([k, , n]) => k === 'all' || k === 'todo' || n > 0 || S.filter === k);
+  }
+  $('#tabs').innerHTML = tabs.map(([k, l, n]) => `<button class="tab ${S.filter === k ? 'on' : ''}" data-filter="${k}">${l}<span class="n">${n}</span></button>`).join('');
+  const vis = visible();
+  $('#items').innerHTML = vis.length ? vis.map(([r, i]) => {
+    let dc;
+    if (team()) { const f = finalOf(r.id); dc = f ? { incl: 'k', excl: 'x', nr: 'n' }[f.d] : status(r.id) === 'conflict' ? 'c' : 't'; }
+    else { const d = S.dec[r.id]?.d; dc = d ? { incl: 'k', excl: 'x', nr: 'n' }[d] : 't'; }
+    return `<div class="it ${i === S.cur ? 'cur' : ''}" data-go="${i}" title="${esc(r.title)}"><span class="i">${i + 1}</span><span class="tt">${S.star[r.id] ? '★ ' : ''}${esc(r.title)}${S.pdf[r.id] ? '' : '<span class="pdfmark"> · PDF?</span>'}</span><i class="dot ${dc}"></i></div>`;
+  }).join('') : `<div class="empty-list">${t('noItems')}</div>`;
+  const cur = $('#items .cur'); if (cur) cur.scrollIntoView({ block: 'nearest' });
+}
+const scholar = r => 'https://scholar.google.com/scholar?q=' + encodeURIComponent('"' + r.title + '"');
+async function renderViewer() {
+  const r = S.records[S.cur], v = $('#viewer'); if (!r || !v) return;
+  const tag = r.id + '|' + (S.pdf[r.id]?.bk || '') + '|' + S.loose.length + '|' + LANG;
+  if (v.dataset.tag === tag) return;
+  v.dataset.tag = tag;
+  if (curUrl) { URL.revokeObjectURL(curUrl); curUrl = ''; }
+  const b = S.pdf[r.id] ? await pdfBlob(r.id) : null;
+  if (S.records[S.cur] !== r || !$('#viewer')) return;           // 读库期间换了别的记录
+  if (b) {
+    curUrl = URL.createObjectURL(b.type === 'application/pdf' ? b : new Blob([b], { type: 'application/pdf' }));
+    v.innerHTML = `<iframe id="pdfv" title="PDF" src="${curUrl}#navpanes=0&view=FitH"></iframe>`;
+    return;
+  }
+  v.innerHTML = `<div class="nopdf"><div class="card">
+    <h2>${t('noPdfTitle')}</h2><p class="hint" style="font-size:13.5px">${t('noPdfP')}</p>
+    <div class="findrow">
+      <label class="ghost pick">📄 ${t('choosePdf')}<input type="file" class="hidden" data-pick="one" accept=".pdf,application/pdf"></label>
+      ${S.loose.length ? `<select class="in" id="looseSel" style="width:auto"><option value="">${t('fromLoose')}</option>${S.loose.map(x => `<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('')}</select>` : ''}
+      ${r.doi ? `<a class="ghost" href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">${t('openDoi')} ↗</a>` : ''}
+      <a class="ghost" href="${scholar(r)}" target="_blank" rel="noopener">${t('searchScholar')} ↗</a>
+    </div>
+    <div class="abs ${r.abstract ? '' : 'none'}"><div class="lab">${t('abstract')}</div>${r.abstract ? esc(r.abstract) : '—'}</div>
+  </div></div>`;
+  const sel = $('#looseSel'); if (sel) sel.onchange = () => { if (sel.value) takeLoose(r.id, sel.value); };
+}
+function stampOf(d) {
+  if (!d) return '';
+  if (d.d === 'incl') return `<span class="stamp k">✓ ${t('stampI')}</span>`;
+  if (d.d === 'nr') return `<span class="stamp n">○ ${t('stampN')}</span>`;
+  return `<span class="stamp x">✕ ${t('stampX')}${d.ec ? ' · ' + esc(d.ec) : ''}</span>` + (d.ec ? '' : ` <span class="stamp c">${t('stampNoReason')}</span>`);
+}
+function renderSide() {
+  const r = S.records[S.cur], el = $('#side'); if (!r || !el) return;
+  const d = team() ? finalOf(r.id) : S.dec[r.id];
+  const au = r.authors.length > 3 ? r.authors.slice(0, 3).join(', ') + ' et al.' : r.authors.join(', ');
+  const I = S.r1info, r1n = I?.note?.[r.id], r1s = I?.star?.[r.id];
+  let stamp = '';
+  if (team()) { if (d) stamp = (d.auto ? `<span class="stamp g">${t('agreedStamp')}</span> ` : '') + stampOf(d); else if (status(r.id) === 'conflict') stamp = `<span class="stamp c">⚠︎ ${t('conflictStamp')}</span>`; }
+  else stamp = stampOf(d);
+  let rv = '';
+  if (team()) {
+    const lab = x => x ? stampOf(x) : `<span class="hint">${t('notYet')}</span>`;
+    rv = reviewers().map(x => `<div class="rv"><b>${esc(x.rid)}${x.me ? ` <span class="hint">(${t('me')})</span>` : ''}</b>${lab(x.dec[r.id])}${x.note[r.id] ? `<div class="hint">${esc(x.note[r.id])}</div>` : ''}</div>`).join('')
+      + `<div class="rv"><b>${t('finalLab')}</b>${finalOf(r.id) ? lab(finalOf(r.id)) : `<span class="stamp c">${t('conflictStamp')}</span>`}</div>`;
+  }
+  const ic = IC(), ec = EC();
+  const crit = (list, cls) => list.length ? `<ul class="crit ${cls}">${list.map(c => `<li><span class="c">${esc(c.code)}</span><span>${esc(c.text)}</span></li>`).join('')}</ul>` : '';
+  const ecs = reasons();
+  const chip = (x, i) => `<button class="rc ${d?.d === 'excl' && d.ec === x.code ? 'sel' : ''} ${S.needReason ? 'need' : ''}" data-ec="${esc(x.code)}" title="${esc(reasonLabel(x.code) + ' · ' + x.text)}">${i < 9 ? `<i>${i + 1}</i>` : ''}${esc(x.code)}</button>`;
+  const isNr = d?.d === 'nr';
+  el.innerHTML = `
+    <div class="sidescroll">
+      <div class="rec">
+        <div class="meta"><span title="${esc(r.uids.join('\n'))}">#${S.cur + 1} · ${esc(r.year || '—')} · ${esc(r.key || '')}</span></div>
+        <h1>${esc(r.title)}</h1>
+        <div class="byline">${esc(au)}${r.venue ? ` · <i>${esc(r.venue)}</i>` : ''}${r.doi ? ` · <a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">DOI</a>` : ''}</div>
+        <div style="margin-top:8px">${stamp}</div>
+        ${r.abstract ? `<details class="absd"><summary>${t('abstract')}</summary><div class="abs">${esc(r.abstract)}</div></details>` : ''}
+        ${r1n || r1s ? `<div class="r1note">${r1s ? '★ ' + t('r1Star') : ''}${r1n ? `${r1s ? ' · ' : ''}${t('r1Note')}：${esc(r1n)}` : ''}</div>` : ''}
+        ${S.pdf[r.id] ? `<div class="hint" style="margin-top:8px">📄 ${esc(S.pdf[r.id].name)} · ${fmtSize(S.pdf[r.id].size || 0)} · <label class="lnk" style="cursor:pointer;padding:0">${t('removePdf')}<input type="file" class="hidden" data-pick="one" accept=".pdf,application/pdf"></label></div>` : ''}
+      </div>
+      ${rv ? `<div class="box" style="margin-top:14px"><h3><span>${t('rvBox')}</span></h3>${rv}</div>` : ''}
+      <details class="box critbox" style="margin-top:14px" ${S.critOpen ? 'open' : ''}><summary><h3>${t('critTitle')}</h3><span class="hint">${ic.length + ec.length ? t('critCount', ic.length, ec.length) : t('critEmpty')}</span></summary>
+        ${crit(ic, 'ic')}<div style="height:8px"></div>${crit(ec, 'ec')}
+        <div class="actions" style="justify-content:flex-end;margin-top:8px"><button class="lnk" data-act="crit">${t('editCrit')}</button></div>
+      </details>
+    </div>
+    <div class="decide ft">
+      <div class="row">
+        <button class="big x ${d?.d === 'excl' ? 'sel' : ''}" data-act="excl">✕ ${t('exclBtn')} <kbd>←</kbd></button>
+        <button class="big k ${d?.d === 'incl' ? 'sel' : ''}" data-act="incl">✓ ${t('inclBtn')} <kbd>→</kbd></button>
+        <button class="big n ${isNr ? 'sel' : ''}" data-act="nr">○ ${t('nrBtn')} <kbd>G</kbd></button>
+      </div>
+      <div class="reasons ft">${ecs.length ? `<span>${t('exclReason')}</span>${ecs.map((x, i) => chip(x, i)).join('')}` : `<span class="warnline">${t('noEC')}</span>`}</div>
+      ${isNr ? `<div class="nrq">${I18N[LANG].nrQuick.map(q => `<button data-nrq="${esc(q)}">+ ${esc(q)}</button>`).join('')}</div>` : ''}
+      <textarea class="note" id="note" rows="2" placeholder="${esc(isNr ? t('nrNotePh') : t('notePh'))}">${esc(S.note[r.id] || '')}</textarea>
+      <div class="minor">
+        <span class="hint">${S.needReason ? `<b style="color:var(--excl)">${t('pickReason')}</b>` : t('keysHint')}</span>
+        <div class="navs">
+          <button class="ib" data-act="prev" title="${esc(t('prev'))} (↑)">↑</button>
+          <button class="ib" data-act="next" title="${esc(t('next'))} (↓)">↓</button>
+          <button class="ib ${S.star[r.id] ? 'on' : ''}" data-act="star" title="${esc(t('star'))} (S)">${S.star[r.id] ? '★' : '☆'}</button>
+          <button class="ib" data-act="undo" title="${esc(t('undo'))} (Z)" ${S.hist.length ? '' : 'disabled'}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M6 3.5 2.5 7 6 10.5"/><path d="M2.5 7H10a3.5 3.5 0 0 1 0 7H8"/></svg></button>
+        </div>
+      </div>
+    </div>`;
+  const note = $('#note');
+  note.oninput = e => { const v = e.target.value; if (v) S.note[r.id] = v; else delete S.note[r.id]; save(); };
+  const det = $('#side .critbox');
+  det.querySelector('summary').onclick = () => setTimeout(() => { S.critOpen = det.open; store.set('critOpen', S.critOpen); }, 0);
+}
+function renderAll() { if (S.view === 'main') { renderProg(); renderList(); renderViewer(); renderSide(); } else if (S.view === 'flow') renderFlow(); }
+
+/* ================= 判断 ================= */
+const pending = id => (team() ? status(id) === 'conflict' && !S.final[id] : !S.dec[id]);
+function nextTodo(from) {
+  const n = S.records.length;
+  for (let k = 1; k <= n; k++) { const i = (from + k) % n; if (pending(S.records[i].id)) return i; }
+  return Math.min(from + 1, n - 1);
+}
+function decide(kind, ec) {
+  const r = S.records[S.cur]; if (!r) return;
+  const tm = team(), box = tm ? S.final : S.dec;
+  const prev = box[r.id] ? { ...box[r.id] } : null;
+  if (kind === 'excl' && !ec && prev?.d === 'excl') ec = prev.ec;
+  // 排除却没选理由：先记下，留在这一篇，提醒选理由（流程图要按理由报篇数）
+  if (kind === 'excl' && !ec) {
+    box[r.id] = { d: 'excl', ec: '', at: Date.now() }; S.hist.push({ id: r.id, prev, f: tm ? 1 : 0 });
+    S.needReason = true; save(); renderAll(); return;
+  }
+  const filling = S.needReason && prev?.d === 'excl' && !prev.ec;
+  S.needReason = false;
+  box[r.id] = { d: kind, ec: kind === 'excl' ? ec : '', at: Date.now() };
+  if (!filling) S.hist.push({ id: r.id, prev, f: tm ? 1 : 0 });
+  save();
+  if (kind !== 'nr') {
+    if (S.filter === 'all') S.cur = nextTodo(S.cur);
+    else { const vis = visible(); const nx = vis.find(([, i]) => i > S.cur) || vis[0]; if (nx) S.cur = nx[1]; }
+  }
+  renderAll();
+  if (kind === 'nr') $('#note')?.focus();
+  if (!prev && (tm ? teamStats().conf === teamStats().res : !stats().todo)) toast(tm ? t('teamDone') : t('allDone'));
+}
+function undo() {
+  const h = S.hist.pop(); if (!h) return;
+  const box = h.f ? S.final : S.dec;
+  if (h.prev) box[h.id] = h.prev; else delete box[h.id];
+  const i = S.records.findIndex(r => r.id === h.id); if (i >= 0) S.cur = i;
+  S.needReason = false; save(); renderAll();
+}
+function go(delta) {
+  const vis = visible(); if (!vis.length) return;
+  let p = vis.findIndex(([, i]) => i === S.cur);
+  p = p < 0 ? 0 : Math.max(0, Math.min(vis.length - 1, p + delta));
+  S.cur = vis[p][1]; S.needReason = false; save(); renderList(); renderViewer(); renderSide();
+}
+function setMode(m) {
+  S.mode = m === 'team' && hasTeam() ? 'team' : 'self';
+  S.filter = S.mode === 'team' ? 'unres' : 'all';
+  const vis = visible(); if (vis.length && !vis.some(([, i]) => i === S.cur)) S.cur = vis[0][1];
+  save(); renderMain();
+}
+function setMulti(on) {
+  S.settings.multi = on;
+  if (on && !String(S.settings.rid || '').trim()) S.settings.rid = 'R1';
+  if (!on) S.mode = 'self';
+  saveSettings();
+  if (S.view === 'main') renderMain(); else if (S.view === 'flow') renderFlow(); else renderSetup();
+  if (modalKind) openModal(modalKind);
+}
+
+/* ================= PRISMA 流程图 ================= */
+const dbName = f => {
+  const s = base(f).replace(/\.(bib|bibtex|txt)$/i, '');
+  if (/acm/i.test(s)) return 'ACM Digital Library'; if (/ieee/i.test(s)) return 'IEEE Xplore'; if (/scopus/i.test(s)) return 'Scopus';
+  if (/web.?of.?science|\bwos\b/i.test(s)) return 'Web of Science'; if (/pubmed|medline/i.test(s)) return 'PubMed'; if (/eric/i.test(s)) return 'ERIC';
+  return s.replace(/[_-]+/g, ' ').trim();
+};
+// 按筛选记录算出的数字（auto），再叠上手动改过的（edit）
+function flowAuto() {
+  const I = S.r1info?.ok ? S.r1info : null;
+  const dec = id => decOf(id);
+  let incl = 0, excl = 0, nr = 0, todo = 0; const ftR = {};
+  S.records.forEach(r => { const d = dec(r.id); if (!d) { todo++; return; } if (d.d === 'incl') incl++; else if (d.d === 'nr') nr++; else { excl++; const c = d.ec || ''; ftR[c] = (ftR[c] || 0) + 1; } });
+  // 同一个库导出了几个文件，合成一行；没有第一轮数据就留三行空的，让人对照摘要筛选助手填
+  const dbs = [];
+  if (I) S.files.forEach(f => { const nm = dbName(f.name), d = dbs.find(x => x.name === nm); if (d) d.n += f.recs.length; else dbs.push({ name: nm, n: f.recs.length }); });
+  else dbs.push({ name: '', n: '' }, { name: '', n: '' }, { name: '', n: '' });
+  return { dbs, dups: I ? S.dups.length : '', screened: I ? S.all.length : '', taExcl: I ? I.excl : '', taR: I ? I.reasons : {},
+    sought: S.records.length, nr, assessed: S.records.length - nr, ftExcl: excl, ftR, incl, todo, hasR1: !!I };
+}
+function flowNums() {
+  const A = flowAuto(), E = S.flow.edit || {}, num = (k, v) => (E[k] !== undefined && E[k] !== '' ? E[k] : v);
+  const dbs = A.dbs.map((d, i) => ({ name: num('db' + i + 'name', d.name), n: num('db' + i + 'n', d.n) }));
+  return { ...A, dbs, dups: num('dups', A.dups), screened: num('screened', A.screened), taExcl: num('taExcl', A.taExcl), sought: num('sought', A.sought), nr: num('nr', A.nr),
+    assessed: num('assessed', A.assessed), ftExcl: num('ftExcl', A.ftExcl), incl: num('incl', A.incl), auto: A };
+}
+const N = v => (v === '' || v == null ? NaN : +v);
+const omitNR = F => S.flow.omitNR && N(F.nr) === 0;
+// 排除理由按标准清单的顺序：EC1…，再是“不满足 IC…”，没写理由的放最后
+const byCode = obj => { const order = reasons().map(x => x.code); const at = c => (c && order.includes(c) ? order.indexOf(c) : 999);
+  return Object.entries(obj).sort((a, b) => at(a[0]) - at(b[0]) || a[0].localeCompare(b[0])); };
+const shownDbs = (F, L) => { const d = F.dbs.filter(x => x.name || x.n !== ''); return d.length ? d : [{ name: L.db, n: '' }]; };
+function flowChecks(F) {
+  const idTot = F.dbs.filter(d => d.name || d.n !== '').reduce((s, d) => s + N(d.n), 0);
+  const ftSum = Object.values(F.ftR).reduce((s, v) => s + v, 0), taSum = Object.values(F.taR).reduce((s, v) => s + v, 0);
+  const L = [
+    [t('chkId'), `${idTot} − ${F.dups} = ${F.screened}`, idTot - N(F.dups) === N(F.screened)],
+    ...(omitNR(F) ? [[t('chkTA2'), `${F.screened} − ${F.taExcl} = ${F.assessed}`, N(F.screened) - N(F.taExcl) === N(F.assessed)]] : [
+      [t('chkTA'), `${F.screened} − ${F.taExcl} = ${F.sought}`, N(F.screened) - N(F.taExcl) === N(F.sought)],
+      [t('chkNR'), `${F.sought} − ${F.nr} = ${F.assessed}`, N(F.sought) - N(F.nr) === N(F.assessed)]]),
+    [t('chkFT'), `${F.assessed} − ${F.ftExcl} = ${F.incl}`, N(F.assessed) - N(F.ftExcl) === N(F.incl)],
+    [t('chkReasons'), `${ftSum} = ${F.ftExcl}`, ftSum === N(F.ftExcl)],
+  ];
+  if (S.flow.showTA && F.hasR1) L.push([t('chkTAR'), `${taSum} = ${F.taExcl}`, taSum === N(F.taExcl)]);
+  return L;
+}
+// 文字自动换行（中文按字，英文按词），用画布量宽度
+const _cv = document.createElement('canvas').getContext('2d');
+const FONT = '"Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+function wrap(text, width, size, weight = 400) {
+  _cv.font = `${weight} ${size}px ${FONT}`;
+  const toks = String(text).match(/[⺀-鿿＀-￯]|[^\s⺀-鿿＀-￯]+|\s+/g) || [];
+  const lines = []; let cur = '';
+  for (const tk of toks) {
+    const test = cur + tk;
+    if (_cv.measureText(test).width > width && cur.trim()) { lines.push(cur.trimEnd()); cur = /^\s+$/.test(tk) ? '' : tk; }
+    else cur = test;
+  }
+  if (cur.trim()) lines.push(cur.trimEnd());
+  return lines.length ? lines : [''];
+}
+function flowSVG() {
+  const F = flowNums(), L = FL[S.flow.lang] || FL.zh, zh = S.flow.lang === 'zh';
+  const W = 980, PH = 46, colL = 90, BW = 380, gapX = 60, colR = colL + BW + gapX, FS = 15, LH = 21, PAD = 14;
+  const rl = code => reasonLabel(code, S.flow.lang);
+  const sortR = byCode;
+  const boxes = [];   // [x, y, w, lines, bold]
+  const block = (lines) => lines.flatMap(([s, b]) => wrap(s, BW - PAD * 2, FS, b ? 600 : 400).map(x => [x, b]));
+  const rows = [
+    { k: 'ident', l: block([[L.ident, 1], ...shownDbs(F, L).map(d => [d.name + L.n(d.n), 0])]), r: block([[L.removed, 1], [L.dups + L.n(F.dups), 0]]) },
+    { k: 'screened', l: block([[L.screened + L.n(F.screened), 0]]), r: block([[L.taExcl + L.n(F.taExcl) + (S.flow.showTA && F.hasR1 ? L.colon : ''), 0], ...(S.flow.showTA && F.hasR1 ? sortR(F.taR).map(([c, n]) => [rl(c) + L.n(n), 0]) : [])]) },
+    { k: 'sought', l: block([[L.sought + L.n(F.sought), 0]]), r: block([[L.nr + L.n(F.nr), 0]]) },
+    { k: 'assessed', l: block([[L.assessed + L.n(F.assessed), 0]]), r: block([[L.ftExcl + L.n(F.ftExcl) + L.colon, 0], ...sortR(F.ftR).map(([c, n]) => [rl(c) + L.n(n), 0])]) },
+    { k: 'incl', l: block([[L.incl + L.n(F.incl), 1]]), r: null },
+  ].filter(r => !(r.k === 'sought' && omitNR(F)));
+  const at = k => rows.findIndex(r => r.k === k);
+  let y = 30; const lay = [];
+  rows.forEach((row, i) => {
+    const hl = row.l.length * LH + PAD * 2, hr = row.r ? row.r.length * LH + PAD * 2 : 0, h = Math.max(hl, hr, 58);
+    lay.push({ y, h, hl: Math.max(hl, 58), hr: row.r ? Math.max(hr, 58) : 0 }); y += h + (i === 0 ? 46 : 40);
+  });
+  const H = y - 10;
+  const esc2 = esc;
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family='${FONT}'>
+  <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker></defs>
+  <rect width="${W}" height="${H}" fill="#fff"/>`;
+  // 左侧阶段条：识别（第 1 行）、筛选（第 2–4 行）、纳入（第 5 行）
+  const phase = (label, y0, y1) => {
+    const cy = (y0 + y1) / 2, cx = 18 + PH / 2, h = y1 - y0;
+    s += `<rect x="18" y="${y0}" width="${PH}" height="${h}" rx="10" fill="#cfe2f3" stroke="#7aa6cf"/>`;
+    if (zh) {
+      const ch = [...label], step = Math.min(20, (h - 12) / ch.length);
+      ch.forEach((c, i) => { s += `<text x="${cx}" y="${cy + (i - (ch.length - 1) / 2) * step}" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="700" fill="#1f3b57">${esc2(c)}</text>`; });
+      return;
+    }
+    _cv.font = `700 15px ${FONT}`;
+    const fs = Math.max(10, Math.min(15, 15 * (h - 14) / _cv.measureText(label).width));
+    s += `<text transform="translate(${cx},${cy}) rotate(-90)" text-anchor="middle" dominant-baseline="central" font-size="${fs.toFixed(1)}" font-weight="700" fill="#1f3b57">${esc2(label)}</text>`; };
+  const [i0, i1, i2, i3] = [at('ident'), at('screened'), at('assessed'), at('incl')];
+  phase(L.idPhase, lay[i0].y, lay[i0].y + lay[i0].h);
+  phase(L.scPhase, lay[i1].y, lay[i2].y + lay[i2].h);
+  phase(L.inPhase, lay[i3].y, lay[i3].y + lay[i3].h);
+  const drawBox = (x, y0, h, lines, emph) => {
+    s += `<rect x="${x}" y="${y0}" width="${BW}" height="${h}" fill="#fff" stroke="#333" stroke-width="${emph ? 2 : 1.3}"/>`;
+    const top = y0 + (h - lines.length * LH) / 2 + LH / 2;
+    lines.forEach(([txt, b], i) => { s += `<text x="${x + BW / 2}" y="${top + i * LH}" text-anchor="middle" dominant-baseline="central" font-size="${FS}" ${b ? 'font-weight="600"' : ''} fill="#111">${esc2(txt)}</text>`; });
+  };
+  rows.forEach((row, i) => {
+    const Ly = lay[i].y, cyL = Ly + lay[i].hl / 2;
+    drawBox(colL, Ly, lay[i].hl, row.l, row.k === 'incl');
+    if (row.r) { drawBox(colR, Ly, lay[i].hr, row.r, false); s += `<line x1="${colL + BW}" y1="${cyL}" x2="${colR - 2}" y2="${cyL}" stroke="#333" stroke-width="1.4" marker-end="url(#ah)"/>`; }
+    if (i < rows.length - 1) s += `<line x1="${colL + BW / 2}" y1="${Ly + lay[i].hl}" x2="${colL + BW / 2}" y2="${lay[i + 1].y - 2}" stroke="#333" stroke-width="1.4" marker-end="url(#ah)"/>`;
+  });
+  return s + '</svg>';
+}
+function sentence33(lang) {
+  const F = flowNums(), zh = lang === 'zh', fig = (zh ? '图 ' : 'Figure ') + (S.flow.fig || '3.1');
+  const R = byCode(F.ftR);
+  const rs = R.map(([c, n]) => zh ? `${reasonLabel(c, 'zh')} ${n} 篇` : `${reasonLabel(c, 'en')}, n = ${n}`).join(zh ? '；' : '; ');
+  const tr = hasTeam() ? teamReport(lang) : '';
+  if (zh) return (N(F.nr) ? `全文阶段，${F.sought} 篇报告中有 ${F.nr} 篇没有获取到全文；其余 ${F.assessed} 篇读完全文，` : `全文阶段，${F.sought} 篇报告的全文都获取到了；读完全文，`)
+    + `排除 ${F.ftExcl} 篇${rs ? `（${rs}）` : ''}，最终纳入 ${F.incl} 篇。${tr}筛选过程见${fig}。`;
+  return (N(F.nr) ? `At the full-text stage, ${F.nr} of the ${F.sought} reports sought could not be retrieved. Of the ${F.assessed} reports assessed, ` : `At the full-text stage, all ${F.sought} reports sought were retrieved and assessed; `)
+    + `${F.ftExcl} were excluded${rs ? ` (${rs})` : ''} and ${F.incl} studies were included.${tr ? ' ' + tr : ''} ${fig} shows the screening process.`;
+}
+function flowText() {
+  const F = flowNums(), L = FL[S.flow.lang] || FL.zh;
+  const out = [L.ident, ...shownDbs(F, L).map(d => '  ' + d.name + L.n(d.n)), L.removed + ' ' + L.dups + L.n(F.dups), L.screened + L.n(F.screened), '  ' + L.taExcl + L.n(F.taExcl)];
+  if (S.flow.showTA) byCode(F.taR).forEach(([c, n]) => out.push('    ' + reasonLabel(c, S.flow.lang) + L.n(n)));
+  if (!omitNR(F)) out.push(L.sought + L.n(F.sought), '  ' + L.nr + L.n(F.nr));
+  out.push(L.assessed + L.n(F.assessed), '  ' + L.ftExcl + L.n(F.ftExcl));
+  byCode(F.ftR).forEach(([c, n]) => out.push('    ' + reasonLabel(c, S.flow.lang) + L.n(n)));
+  out.push(L.incl + L.n(F.incl));
+  return out.join('\n');
+}
+function renderFlow() {
+  S.view = 'flow';
+  const F = flowNums(), A = F.auto, E = S.flow.edit || {};
+  const field = (k, label, val, autoV) => `<span class="lbl">${esc(label)}</span><input class="in ${E[k] !== undefined && E[k] !== '' && String(E[k]) !== String(autoV) ? 'edited' : ''}" data-fk="${k}" value="${esc(val)}">`;
+  const chk = flowChecks(F);
+  $('#app').innerHTML = `
+  <div class="shell">
+  ${topBar(`<div class="prog"><div class="nums" style="justify-content:center"><b style="color:var(--ink);font-size:16px">${t('flowTitle')}</b></div></div>`)}
+  <div class="flowpage">
+    <div class="flowcanvas" id="flowcanvas">${flowSVG()}</div>
+    <aside class="flowside">
+      <div class="box"><h3><span>${t('flowLang')}</span></h3>
+        <div class="seg" style="margin:0 0 10px">${[['zh', '中文'], ['en', 'English']].map(([k, l]) => `<button class="${S.flow.lang === k ? 'on' : ''}" data-flang="${k}">${l}</button>`).join('')}</div>
+        <label class="rd" style="font-size:13.5px"><input type="checkbox" id="showTA" ${S.flow.showTA ? 'checked' : ''} ${A.hasR1 ? '' : 'disabled'}> ${t('showTA')}</label>
+        <label class="rd" style="font-size:13.5px;margin-top:6px"><input type="checkbox" id="omitNR" ${S.flow.omitNR ? 'checked' : ''} ${N(F.nr) === 0 ? '' : 'disabled'}> ${t('omitNR')}</label>
+        <div class="actions" style="justify-content:flex-start;margin-top:12px"><button class="primary" data-act="dlPng" style="padding:9px 16px;font-size:14px">${t('dlPng')}</button><button class="ghost" data-act="dlSvg">${t('dlSvg')}</button><button class="ghost" data-act="copyNums">${t('copyNums')}</button></div>
+      </div>
+      <div class="box"><h3><span>${t('checksTitle')}</span></h3>
+        <ul class="checks">${chk.map(([a, b, ok]) => `<li><span>${esc(a)}<br><span class="hint">${esc(b)}</span></span><span class="${ok ? 'ok' : 'bad'}">${ok ? '✓' : '✗'}</span></li>`).join('')}
+          ${A.todo ? `<li><span class="warnline">${t('chkTodo', A.todo)}</span><span></span></li>` : ''}</ul>
+        ${!A.hasR1 ? `<p class="hint" style="margin:10px 0 0">${t('unknownR1')}</p>` : ''}
+      </div>
+      <div class="box"><h3><span>${t('write33')}</span><button class="lnk" data-act="copy33">${t('copy')}</button></h3>
+        <pre class="prisma" id="s33" style="margin:0">${esc(sentence33(LANG))}</pre>
+        <div class="fgrid" style="margin-top:8px"><span class="lbl">${t('figNo')}</span><input class="in" data-ffig="1" value="${esc(S.flow.fig || '3.1')}"></div>
+      </div>
+      <details class="box" ${Object.keys(E).length ? 'open' : ''}><summary style="cursor:pointer"><b style="font-size:13.5px">${t('editTitle')}</b></summary>
+        <p class="hint" style="margin:8px 0 10px">${t('editHint')}</p>
+        <div class="fgrid">
+          ${F.dbs.map((d, i) => `<input class="in full ${E['db' + i + 'name'] ? 'edited' : ''}" data-fk="db${i}name" value="${esc(d.name)}" placeholder="${esc(t('dbNames'))} ${i + 1}" style="grid-column:1">` + `<input class="in ${E['db' + i + 'n'] !== undefined && E['db' + i + 'n'] !== '' ? 'edited' : ''}" data-fk="db${i}n" value="${esc(d.n)}">`).join('')}
+          ${field('dups', t('fDups'), F.dups, A.dups)}${field('screened', t('fScreened'), F.screened, A.screened)}${field('taExcl', t('fTAExcl'), F.taExcl, A.taExcl)}
+          ${field('sought', t('fSought'), F.sought, A.sought)}${field('nr', t('fNR'), F.nr, A.nr)}${field('assessed', t('fAssessed'), F.assessed, A.assessed)}
+          ${field('ftExcl', t('fFTExcl'), F.ftExcl, A.ftExcl)}${field('incl', t('fIncl'), F.incl, A.incl)}
+        </div>
+        <div class="actions"><button class="lnk" data-act="resetFlow">${t('resetFlow')}</button></div>
+      </details>
+    </aside>
+  </div></div>`;
+  $('#showTA').onchange = e => { S.flow.showTA = e.target.checked; saveFlow(); renderFlow(); };
+  $('#omitNR').onchange = e => { S.flow.omitNR = e.target.checked; saveFlow(); renderFlow(); };
+  document.querySelectorAll('[data-fk]').forEach(inp => { inp.onchange = () => { S.flow.edit = Object.assign({}, S.flow.edit, { [inp.dataset.fk]: inp.value.trim() }); if (inp.value.trim() === '') delete S.flow.edit[inp.dataset.fk]; saveFlow(); renderFlow(); }; });
+  const fig = $('[data-ffig]'); fig.onchange = () => { S.flow.fig = fig.value.trim() || '3.1'; saveFlow(); renderFlow(); };
+}
+function svgPng() {
+  const svg = flowSVG(), m = svg.match(/width="(\d+)" height="(\d+)"/), w = +m[1], h = +m[2], k = 2;
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => { const c = document.createElement('canvas'); c.width = w * k; c.height = h * k; const g = c.getContext('2d'); g.scale(k, k); g.drawImage(img, 0, 0); c.toBlob(res, 'image/png'); };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
+const flowName = ext => (S.flow.lang === 'zh' ? 'PRISMA流程图' : 'PRISMA-flow-diagram') + '.' + ext;
+
+/* ================= 弹窗 ================= */
+let modalKind = '';
+function openModal(kind) { modalKind = kind; closeModalEl(); const m = document.createElement('div'); m.className = 'mask'; m.id = 'mask'; m.innerHTML = `<div class="modal" role="dialog">${modalHTML(kind)}</div>`; m.onclick = e => { if (e.target === m) closeModal(); }; document.body.appendChild(m); bindModal(kind); }
+function closeModalEl() { const m = $('#mask'); if (m) m.remove(); }
+function closeModal() { closeModalEl(); modalKind = ''; }
+const head = (title, sub) => `<h2>${title}<button class="x" data-act="close" aria-label="close">×</button></h2>${sub ? `<p class="sub">${sub}</p>` : ''}`;
+function teamHTML() {
+  const R = reviewers(), ts = teamStats(), rep = teamReport();
+  const rows = R.map(x => `<div class="rvrow"><b>${esc(x.rid)}</b>${x.me ? `<span class="hint">（${t('me')}）</span>` : ''}<span class="hint">${t('screenedN', Object.keys(x.dec).filter(id => S.byId[id]).length)}</span>
+    ${x.me ? '' : `<button class="lnk" data-act="rmRv" data-rv="${esc(x.rid)}">${t('remove')}</button>`}</div>`).join('');
+  return head(t('teamTitle'), t('teamSub')) + `
+    <div class="ex-grid">
+      <div class="ex"><div><b>${t('exMine')}</b><span>${t('exMineD')}</span></div><button class="ghost" data-act="exMine">${t('download')}</button></div>
+      <div class="ex"><div><b>${t('impOthers')}</b><span>${t('impOthersD')}</span></div><label class="ghost" style="cursor:pointer">${t('impOthers')}<input type="file" id="impOthers" accept=".json" multiple class="hidden"></label></div>
+    </div>
+    <div class="lab2" style="margin-top:18px"><span>${t('reviewers')}</span></div><div>${rows}</div>
+    <div class="lab2" style="margin-top:18px"><span>${t('agreeTitle')}</span>${rep ? `<button class="lnk" data-act="copyReport">${t('copy')}</button>` : ''}</div>
+    ${rep ? `<pre class="prisma" id="reportTxt">${esc(rep)}</pre>
+      ${ts.conf ? `<div class="actions"><button class="primary" data-act="startTeam">${ts.res === ts.conf ? t('allResolved') : t('startTeam', ts.conf - ts.res)}</button></div>` : ''}` : `<p class="mutedp">${t('agreeNone')}</p>`}`;
+}
+function modalHTML(kind) {
+  if (kind === 'team') return teamHTML();
+  if (kind === 'settings') {
+    const tab = S.setTab || 'files';
+    const tabs = [['files', t('tabFiles')], ['team', t('tabTeam')], ['lang', t('tabLang')], ['help', t('tabHelp')]];
+    let body = '';
+    if (tab === 'files') body = `<div class="pickrow" style="justify-content:flex-start;margin:0 0 6px">${pickRec(false)}</div>${recListHTML()}<div class="pickrow" style="justify-content:flex-start;margin:16px 0 6px">${pickPdf(false)}</div>${pdfListHTML()}`;
+    if (tab === 'team') body = teamControls('m');
+    if (tab === 'lang') body = `<div class="fld"><label>${t('uiLang')}</label><div class="radios">${radio('ui', 'zh', '中文', LANG === 'zh')}${radio('ui', 'en', 'English', LANG === 'en')}</div></div>`;
+    if (tab === 'help') body = guideHTML();
+    return head('⚙ ' + t('setTitle')) + `<div class="seg">${tabs.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div><div class="pane">${body}</div>`;
+  }
+  if (kind === 'crit') return head(t('critModal'), t('critSub')) + critForm() + `<div class="actions"><button class="primary" data-act="close">${t('save')}</button></div>`;
+  if (kind === 'loose') return head(t('looseTitle'), t('looseSub')) + `<div class="losslist">${S.loose.map(x => `<div><span>${esc(x.name)}</span><span class="hint">${fmtSize(x.size || 0)}</span></div>`).join('')}</div>`;
+  if (kind === 'export') return head(t('exportTitle'), t('exportSub')) + `
+    <div class="ex-grid">
+      ${multi() ? `<div class="ex"><div><b>${t('exMine')}</b><span>${t('exMineD')}</span></div><button class="ghost" data-act="exMine">${t('download')}</button></div>` : ''}
+      <div class="ex"><div><b>${t('exCsv')}</b><span>${t('exCsvD')}</span></div><button class="ghost" data-act="exCsv">${t('download')}</button></div>
+      <div class="ex"><div><b>${t('exBib')}</b><span>${t('exBibD')}</span></div><button class="ghost" data-act="exBib">${t('download')}</button></div>
+      <div class="ex"><div><b>${t('exJson')}</b><span>${t('exJsonD')}</span></div><span style="display:flex;gap:8px"><button class="ghost" data-act="exJson">${t('download')}</button>
+        <label class="ghost" style="cursor:pointer">${t('exImp')}<input type="file" id="impJson" accept=".json" class="hidden"></label></span></div>
+    </div>`;
+  return '';
+}
+function guideHTML() {
+  return `<div class="guide"><ol>${GUIDE[LANG].map(x => `<li>${x}</li>`).join('')}</ol>
+    <h4>${t('kTitle')}</h4><div class="keys">
+    <kbd>→</kbd><span>${t('kIncl')}</span><kbd>←</kbd><span>${t('kExcl')}</span><kbd>1 … 9</kbd><span>${t('kNum')}</span><kbd>G</kbd><span>${t('kNr')}</span>
+    <kbd>Z</kbd><span>${t('kUndo')}</span><kbd>↑ ↓</kbd><span>${t('kNav')}</span><kbd>S</kbd><span>${t('kStar')}</span><kbd>N</kbd><span>${t('kNote')}</span><kbd>Esc</kbd><span>${t('kEsc')}</span></div>
+    <p class="hint" style="margin-top:12px">${t('kFocus')}</p><p class="hint" style="margin-top:6px">${t('guideMore')}</p></div>`;
+}
+function setLang(v) {
+  LANG = v; store.set('lang', LANG); document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en';
+  if (S.view === 'main') renderMain(); else if (S.view === 'flow') renderFlow(); else renderSetup();
+  if (modalKind) openModal(modalKind);
+}
+function bindModal(kind) {
+  if (kind === 'crit') bindCritForm();
+  if (kind === 'team') $('#impOthers').onchange = e => importOthers([...e.target.files]);
+  if (kind === 'settings' && (S.setTab || 'files') === 'lang') document.querySelectorAll('input[name=ui]').forEach(r => { r.onchange = () => setLang(r.value); });
+  if (kind === 'export') {
+    $('#impJson').onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      try {
+        const p = JSON.parse(await f.text());
+        if (p.app !== 'ft-screener' || p.sig !== S.sig) { toast(t('impBad')); return; }
+        Object.assign(S, { dec: p.dec || {}, star: p.star || {}, note: p.note || {}, others: p.others || {}, final: p.final || {}, hist: [] });
+        if (p.crit) { S.crit = p.crit; saveCrit(); }
+        if (p.flow) { S.flow = Object.assign(S.flow, p.flow); saveFlow(); }
+        save(); closeModal(); renderAll(); if (S.view === 'setup') renderSetup(); toast(t('impOk'));
+      } catch (err) { toast(t('impBad')); }
+    };
+  }
+}
+
+/* ================= 导出、多人 ================= */
+function exportMine() {
+  const records = S.records.map(r => ({ mk: r.mk, key: r.key, title: r.title, year: r.year, d: S.dec[r.id]?.d || '', ec: S.dec[r.id]?.ec || '', note: S.note[r.id] || '', star: S.star[r.id] ? 1 : 0 }));
+  download(`${LANG === 'zh' ? '全文筛选结果' : 'full-text-results'}_${myRid()}.json`,
+    JSON.stringify({ app: 'ft-screener', kind: 'reviewer-results', v: 1, rid: myRid(), at: new Date().toISOString(), crit: S.crit, records }, null, 1), 'application/json');
+}
+async function importOthers(files) {
+  const byMk = new Map(S.records.map(r => [r.mk, r.id]));
+  for (const f of files) {
+    let p; try { p = JSON.parse(await f.text()); } catch (e) { toast(t('impBadTeam')); continue; }
+    if (p.app !== 'ft-screener' || p.kind !== 'reviewer-results' || !Array.isArray(p.records)) { toast(t('impBadTeam')); continue; }
+    const rid = String(p.rid || f.name.replace(/\.json$/i, '')).trim();
+    if (rid === myRid()) { toast(t('impMineSkip', rid)); continue; }
+    const dec = {}, note = {}; let hit = 0, miss = 0;
+    p.records.forEach(x => {
+      const id = byMk.get(x.mk); if (!id) { miss++; return; }
+      if (CATS.includes(x.d)) { dec[id] = { d: x.d, ec: x.ec || '' }; hit++; }
+      if (x.note) note[id] = x.note;
+    });
+    S.others[rid] = { dec, note, at: p.at || '' };
+    toast(t('importedRv', rid, hit) + (miss ? ' · ' + t('impNotMatched', miss) : ''));
+  }
+  save(); if (S.view === 'main') renderMain(); openModal('team');
+}
+function csvCell(v) { const s = String(v ?? ''); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function exportCsv() {
+  const zh = LANG === 'zh';
+  const H = zh ? ['序号', '引用键', '题目', '作者', '年份', '出处', '全文判断', '排除理由', '理由说明', '备注', '星标', '有 PDF', 'PDF 文件']
+    : ['No.', 'Keys', 'Title', 'Authors', 'Year', 'Venue', 'Full-text decision', 'Reason', 'Reason text', 'Note', 'Starred', 'Has PDF', 'PDF file'];
+  const rows = S.records.map((r, i) => {
+    const d = decOf(r.id);
+    return [i + 1, r.keys.join(' | '), r.title, r.authors.join('; '), r.year, r.venue, d ? catName(d.d) : (zh ? '未判断' : 'not decided'),
+      d?.d === 'excl' ? (d.ec || '') : '', d?.d === 'excl' ? reasonLabel(d.ec) : '', S.note[r.id] || '', S.star[r.id] ? '★' : '', S.pdf[r.id] ? (zh ? '是' : 'yes') : '', S.pdf[r.id]?.name || ''];
+  });
+  download((zh ? '全文筛选结果' : 'full-text-screening') + (multi() ? '_' + myRid() : '') + '.csv', '﻿' + [H, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n'), 'text/csv;charset=utf-8');
+}
+function exportBib() {
+  const inc = S.records.filter(r => decOf(r.id)?.d === 'incl');
+  download((LANG === 'zh' ? '纳入的文献' : 'included-studies') + '.bib', inc.map(r => r.raw).join('\n\n') + '\n', 'text/plain;charset=utf-8');
+}
+function exportJson() {
+  download((LANG === 'zh' ? '全文筛选进度备份' : 'full-text-progress') + (multi() ? '_' + myRid() : '') + '.json',
+    JSON.stringify({ app: 'ft-screener', v: 1, sig: S.sig, dec: S.dec, star: S.star, note: S.note, others: S.others, final: S.final, crit: S.crit, flow: S.flow, at: new Date().toISOString() }, null, 1), 'application/json');
+}
+
+/* ================= 事件 ================= */
+document.addEventListener('click', e => {
+  const menu = $('#menu');
+  if (menu && !e.target.closest('.menu-wrap')) menu.classList.add('hidden');
+  const b = e.target.closest('[data-act],[data-filter],[data-go],[data-ec],[data-tab],[data-mode],[data-flang],[data-nrq]'); if (!b) return;
+  if (b.dataset.tab) { S.setTab = b.dataset.tab; openModal('settings'); return; }
+  if (b.dataset.mode) { setMode(b.dataset.mode); return; }
+  if (b.dataset.flang) { S.flow.lang = b.dataset.flang; saveFlow(); renderFlow(); return; }
+  if (b.dataset.nrq) { const r = S.records[S.cur], q = b.dataset.nrq, cur = S.note[r.id] || ''; S.note[r.id] = cur ? cur.replace(/[；;。.\s]*$/, '') + (LANG === 'zh' ? '；' : '; ') + q : q; save(); renderSide(); return; }
+  if (menu && b.closest('#menu')) menu.classList.add('hidden');
+  if (b.dataset.filter) { S.filter = b.dataset.filter; const vis = visible(); if (vis.length && !vis.some(([, i]) => i === S.cur)) S.cur = vis[0][1]; renderList(); renderViewer(); renderSide(); return; }
+  if (b.dataset.go) { S.cur = +b.dataset.go; S.needReason = false; save(); renderList(); renderViewer(); renderSide(); return; }
+  if (b.dataset.ec) { decide('excl', b.dataset.ec); return; }
+  const act = b.dataset.act;
+  ({
+    lang: () => setLang(LANG === 'zh' ? 'en' : 'zh'),
+    settings: () => openModal('settings'),
+    guide: () => { S.setTab = 'help'; openModal('settings'); },
+    example: () => { $('#icText').value = EXAMPLE[LANG].ic; $('#ecText').value = EXAMPLE[LANG].ec; $('#icText').dispatchEvent(new Event('input')); },
+    clearFiles: () => { S.files = []; S.r1 = null; afterFilesChanged(); },
+    clearPdf: () => clearPdfs(), loose: () => openModal('loose'),
+    start: async () => {
+      if (!S.records.length) return;
+      if (multi() && !String(S.settings.rid || '').trim()) { toast(t('needRid')); $('[data-ridinput]')?.focus(); return; }
+      if (S.loadedSig !== S.sig) await load();
+      store.set('view', 'main'); renderMain();
+    },
+    home: () => { S.view = 'setup'; store.set('view', 'setup'); closeModal(); renderSetup(); },
+    flow: () => { store.set('view', 'flow'); closeModal(); renderFlow(); },
+    backMain: () => { store.set('view', 'main'); renderMain(); },
+    crit: () => openModal('crit'), export: () => openModal('export'), team: () => openModal('team'),
+    close: () => { closeModal(); renderAll(); },
+    excl: () => decide('excl'), incl: () => decide('incl'), nr: () => decide('nr'), undo, prev: () => go(-1), next: () => go(1),
+    menu: () => $('#menu').classList.toggle('hidden'),
+    star: () => { const r = S.records[S.cur]; if (S.star[r.id]) delete S.star[r.id]; else S.star[r.id] = 1; save(); renderSide(); renderList(); },
+    exCsv: exportCsv, exBib: exportBib, exJson: exportJson, exMine: exportMine,
+    rmRv: () => { delete S.others[b.dataset.rv]; if (!hasTeam()) S.mode = 'self'; save(); if (S.view === 'main') renderMain(); openModal('team'); },
+    startTeam: () => { closeModal(); store.set('view', 'main'); setMode('team'); },
+    copyReport: () => { navigator.clipboard?.writeText(teamReport()).then(() => toast(t('copied'))); },
+    dlSvg: () => downloadBlob(flowName('svg'), new Blob([flowSVG()], { type: 'image/svg+xml' })),
+    dlPng: async () => downloadBlob(flowName('png'), await svgPng()),
+    copyNums: () => { navigator.clipboard?.writeText(flowText()).then(() => toast(t('copied'))); },
+    copy33: () => { navigator.clipboard?.writeText(sentence33(LANG)).then(() => toast(t('copied'))); },
+    resetFlow: () => { S.flow.edit = {}; saveFlow(); renderFlow(); },
+  }[act] || (() => {}))();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { $('#menu')?.classList.add('hidden'); if ($('#mask')) { closeModal(); renderAll(); } else if (document.activeElement) document.activeElement.blur(); return; }
+  if (S.view !== 'main' || $('#mask')) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (k === 'ArrowLeft' || k === 'x' || k === 'X') { e.preventDefault(); decide('excl'); }
+  else if (k === 'ArrowRight' || k === 'i' || k === 'I') { e.preventDefault(); decide('incl'); }
+  else if (k === 'g' || k === 'G') { e.preventDefault(); decide('nr'); }
+  else if (/^[1-9]$/.test(k)) { const x = reasons()[+k - 1]; if (x) { e.preventDefault(); decide('excl', x.code); } }
+  else if (k === 'z' || k === 'Z' || k === 'Backspace') { e.preventDefault(); undo(); }
+  else if (k === 'ArrowUp') { e.preventDefault(); go(-1); }
+  else if (k === 'ArrowDown') { e.preventDefault(); go(1); }
+  else if (k === 's' || k === 'S') { e.preventDefault(); $('[data-act="star"]')?.click(); }
+  else if (k === 'n' || k === 'N') { e.preventDefault(); $('#note')?.focus(); }
+  else if (k === '?') { S.setTab = 'help'; openModal('settings'); }
+});
+document.addEventListener('change', async e => {
+  const inp = e.target.closest('input[data-pick]');
+  if (inp) {
+    const files = [...inp.files], kind = inp.dataset.pick; inp.value = '';
+    if (kind === 'rec' || kind === 'recdir') addRecFiles(files);
+    else if (kind === 'pdf' || kind === 'pdfdir') addPdfs(files);
+    else if (kind === 'one' && files[0]) { const r = S.records[S.cur]; await attachPdf(r.id, files[0]); savePdfIndex(); refreshAfterPdf(); }
+    return;
+  }
+  if (e.target.name === 'team_s' || e.target.name === 'team_m') setMulti(e.target.value === 'multi');
+});
+document.addEventListener('input', e => {
+  if (e.target.dataset && e.target.dataset.ridinput) { S.settings.rid = e.target.value.trim(); saveSettings(); }
+});
+window.addEventListener('beforeunload', save);
+
+// 打开页面时：恢复上次的记录、PDF 和进度；上次在阅读页或流程图页，就回到那里
+(async function init() {
+  document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en';
+  const saved = await DB.get('files');
+  if (saved && (Array.isArray(saved.bibs) && saved.bibs.length)) {
+    S.files = saved.bibs.map(f => ({ name: f.name, text: f.text, recs: parseBib(f.text || '', f.name) })).filter(f => f.recs.length);
+    S.r1 = saved.r1 || null;
+    rebuild();
+    const pi = await DB.get('pdfindex'); if (pi) { S.pdf = pi.pdf || {}; S.loose = pi.loose || []; }
+    if (S.records.length) {
+      await load();
+      const v = store.get('view', 'setup');
+      if (v === 'main' || v === 'flow') { if (v === 'flow') renderFlow(); else renderMain(); toast(t('restored')); return; }
+    }
+  }
+  renderSetup();
+})();
+})();
+</script>
+</body>
+</html>
