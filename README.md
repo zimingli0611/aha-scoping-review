@@ -25,6 +25,10 @@
 
 视频里演示用的记录和全文 PDF 都是为教学编的模拟数据，不在这个仓库里。
 
+## 许可
+
+[MIT](LICENSE) © 2026 栗子悟了 (Aha Chestnut)。可以自由使用、修改和分享，保留版权声明即可。
+
 ---
 
 # Scoping Review from Scratch · Companion tools
@@ -51,3 +55,7 @@ Small tools that go with the video series *Scoping Review from Scratch* by Aha C
 - The Abstract Screener's **AI pre-screening is optional and off by default**. When it's on, your criteria and each record's title, keywords and abstract are sent to the model provider you set (e.g., DeepSeek). The API key stays in your browser.
 
 The records and full-text PDFs shown in the videos are simulated data made up for teaching; they are not in this repository.
+
+## License
+
+[MIT](LICENSE) © 2026 栗子悟了 (Aha Chestnut). Free to use, modify and share; keep the copyright notice.
