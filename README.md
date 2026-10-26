@@ -6,8 +6,8 @@
 
 | 工具 | 配套视频 | 做什么 | 文件 |
 | --- | --- | --- | --- |
-| 摘要筛选助手 | 第 7 期：写纳入排除标准与摘要筛选 | 第一轮筛选：导入 bib、自动去重，一条条看题目和摘要，按键判断；可选 AI 预审；多人筛选算一致率和 κ；导出保留的记录和流程图数字 | [摘要筛选助手.html](abstract-screener/摘要筛选助手.html) · [使用说明](abstract-screener/摘要筛选助手_使用说明.md) |
-| 全文筛选助手 | 第 8 期：全文筛选与 PRISMA 流程图 | 第二轮筛选：导入第一轮的结果和全文 PDF，边读边判断（纳入 / 排除并记一条排除标准 / 没有获取到全文）；多人筛选；自动画 PRISMA 流程图并逐层核对 | [全文筛选助手.html](full-text-screener/全文筛选助手.html) · [使用说明](full-text-screener/全文筛选助手_使用说明.md) |
+| 摘要筛选助手 | 第 7 期：写纳入排除标准与摘要筛选 | 第一轮筛选：导入 bib、自动去重，一条条看题目和摘要，按键判断；可选 AI 预审；多人筛选算一致率和 κ；导出保留的记录和流程图数字 | [abstract-screener.html](abstract-screener/abstract-screener.html) · [使用说明](abstract-screener/摘要筛选助手_使用说明.md) |
+| 全文筛选助手 | 第 8 期：全文筛选与 PRISMA 流程图 | 第二轮筛选：导入第一轮的结果和全文 PDF，边读边判断（纳入 / 排除并记一条排除标准 / 没有获取到全文）；多人筛选；自动画 PRISMA 流程图并逐层核对 | [full-text-screener.html](full-text-screener/full-text-screener.html) · [使用说明](full-text-screener/全文筛选助手_使用说明.md) |
 
 ## 怎么用
 
@@ -37,8 +37,8 @@ Small tools that go with the video series *Scoping Review from Scratch* by Aha C
 
 | Tool | Episode | What it does | Files |
 | --- | --- | --- | --- |
-| Abstract Screener | Ep. 7: inclusion and exclusion criteria, and abstract screening | Round one: import .bib files with automatic deduplication, read titles and abstracts one by one, decide with the keyboard; optional AI pre-screening; team screening with agreement and κ; export the kept records and the flow-diagram numbers | [摘要筛选助手.html](abstract-screener/摘要筛选助手.html) · [guide](abstract-screener/摘要筛选助手_使用说明.md) (English quick guide at the end) |
-| Full-Text Screener | Ep. 8: full-text screening and the PRISMA flow diagram | Round two: import round-one results and the full-text PDFs, decide while reading (include / exclude with one exclusion criterion / not retrieved); team screening; draws the PRISMA flow diagram and checks every level | [全文筛选助手.html](full-text-screener/全文筛选助手.html) · [guide](full-text-screener/全文筛选助手_使用说明.md) (English quick guide at the end) |
+| Abstract Screener | Ep. 7: inclusion and exclusion criteria, and abstract screening | Round one: import .bib files with automatic deduplication, read titles and abstracts one by one, decide with the keyboard; optional AI pre-screening; team screening with agreement and κ; export the kept records and the flow-diagram numbers | [abstract-screener.html](abstract-screener/abstract-screener.html) · [guide](abstract-screener/摘要筛选助手_使用说明.md) (English quick guide at the end) |
+| Full-Text Screener | Ep. 8: full-text screening and the PRISMA flow diagram | Round two: import round-one results and the full-text PDFs, decide while reading (include / exclude with one exclusion criterion / not retrieved); team screening; draws the PRISMA flow diagram and checks every level | [full-text-screener.html](full-text-screener/full-text-screener.html) · [guide](full-text-screener/全文筛选助手_使用说明.md) (English quick guide at the end) |
 
 ## How to use
 
