@@ -1,6 +1,6 @@
-# 从零写一篇范围综述 · 配套工具
+# 你人生中的第一篇综述 · 配套工具
 
-栗子悟了（Aha Chestnut）视频系列《从零写一篇范围综述》的配套小工具。每个工具都是一个单独的 HTML 文件：下载下来，双击用浏览器打开就能用，不用安装。
+栗子悟了（Aha Chestnut）视频系列《你人生中的第一篇综述》的配套小工具。每个工具都是一个单独的 HTML 文件：下载下来，双击用浏览器打开就能用，不用安装。
 
 > English: see [below](#scoping-review-from-scratch--companion-tools).
 
@@ -31,9 +31,9 @@
 
 ---
 
-# Scoping Review from Scratch · Companion tools
+# Your First Literature Review · Companion tools
 
-Small tools that go with the video series *Scoping Review from Scratch* by Aha Chestnut (栗子悟了). Each tool is a single HTML file: download it and double-click to open it in your browser. Nothing to install.
+Small tools that go with the video series *Your First Literature Review* by Aha Chestnut (栗子悟了). Each tool is a single HTML file: download it and double-click to open it in your browser. Nothing to install.
 
 | Tool | Episode | What it does | Files |
 | --- | --- | --- | --- |
