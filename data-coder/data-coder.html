@@ -1813,7 +1813,7 @@ function renderChecks() {
     + checkCard('answer', 0, 'mostImp', R.answer.length ? `⚠︎ ${t('stAnsBad', rqs.length - R.answer.length, rqs.length)}` : `✓ ${t('stAnsOk', rqs.length)}`, R.answer.length ? 'warn' : 'ok')
     + checkCard('chart', 0, 'easyForget', R.chart.length ? `⚠︎ ${t('stChartBad', R.chart.length)}` : `✓ ${t('stChartOk')}`, R.chart.length ? 'warn' : 'ok');
   const otherIds = Object.keys(R.other);
-  const otherBanner = otherIds.length ? `<div class="flagbox" id="otherWarn" style="margin:-4px 0 16px;font-size:13.5px;padding:9px 12px">⚠︎ ${t('otherBanner')} ${otherIds.map(id => { const o = R.other[id]; return `<b>${esc(cname(itemById(id)))}</b> ${o.n}/${o.of}（${pc(o.sh)}）`; }).join(isZh() ? '；' : '; ')}</div>` : '';
+  const otherBanner = otherIds.length ? `<div class="flagbox" id="otherWarn" style="margin:-4px 0 16px;font-size:13.5px;padding:9px 12px">⚠︎ ${t('otherBanner')} ${otherIds.map(id => { const o = R.other[id]; return `<b>${esc(cname(itemById(id)))}</b> ${o.n}/${o.of}${isZh() ? `（${pc(o.sh)}）` : ` (${pc(o.sh)})`}`; }).join(isZh() ? '；' : '; ')}</div>` : '';
   const row = it => {
     const F = R.find[it.id], O = R.other[it.id], chIss = R.chart.find(x => x.i === it.id);
     const findTd = !F ? `<span class="mut2">—</span>` : F.lvl === 'opt' ? `<span class="mut2">${t('optShort')} · ${F.miss}/${F.n}</span>`
@@ -2263,7 +2263,7 @@ const appTitle = lang => (lang === 'zh' ? `附录 ${S.out.app}　编码说明` :
 const appLegend = lang => (lang === 'zh' ? '❍ 单选，❏ 多选，[...] 摘录原文' : '❍ single choice, ❏ multiple choice, [...] copied text');
 function appendixMd(lang = S.out.langApp) {
   const z = lang === 'zh', bar = s => String(s).replace(/\|/g, '\\|');
-  return `**${appTitle(lang)}**（${appLegend(lang)}）\n\n| ${z ? '编码' : 'Code'} | ${z ? '填法' : 'How to code'} |\n| --- | --- |\n`
+  return `**${appTitle(lang)}**${z ? `（${appLegend(lang)}）` : ` (${appLegend(lang)})`}\n\n| ${z ? '编码' : 'Code'} | ${z ? '填法' : 'How to code'} |\n| --- | --- |\n`
     + appendixRows(lang).map(g => `| **${bar(g.b ? g.b.name : (z ? '没有分块' : 'Unassigned'))}** | |\n` + g.items.map(([a, b]) => `| ${bar(a)} | ${bar(b)} |`).join('\n')).join('\n') + '\n';
 }
 // Word 能直接打开的 .html（表格和颜色都保留）
@@ -2273,7 +2273,7 @@ function appendixHtml(lang = S.out.langApp) {
     + g.items.map(([a, b]) => `<tr><td style="white-space:nowrap;font-weight:bold;vertical-align:top">${X(a)}</td><td>${X(b)}</td></tr>`).join('')).join('');
   return `<!doctype html><html lang="${z ? 'zh-CN' : 'en'}"><head><meta charset="utf-8"><title>${X(appTitle(lang))}</title>
 <style>body{font-family:${z ? '"Songti SC","SimSun",' : ''}"Times New Roman",serif;font-size:11pt;margin:2cm}table{border-collapse:collapse;width:100%}td{border:1px solid #999;padding:4pt 6pt}p.cap{font-weight:bold}</style></head>
-<body><p class="cap">${X(appTitle(lang))}（${X(appLegend(lang))}）</p><table>${rows}</table></body></html>`;
+<body><p class="cap">${X(appTitle(lang))}${z ? `（${X(appLegend(lang))}）` : ` (${X(appLegend(lang))})`}</p><table>${rows}</table></body></html>`;
 }
 
 /* ================= 3.4 的方法段落（按当前的记录生成） ================= */
